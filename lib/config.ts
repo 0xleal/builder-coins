@@ -1,11 +1,11 @@
 import { createConfig } from "@privy-io/wagmi";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import { http } from "wagmi";
 
 export const config = createConfig({
-  chains: [baseSepolia],
+  chains: [base],
   transports: {
-    [baseSepolia.id]: http(),
+    [base.id]: http(),
   },
 });
 

@@ -4,19 +4,22 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useAccount, useWalletClient } from "wagmi";
 import { createPublicClient, http } from "viem";
 import { Clanker } from "clanker-sdk/v4";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 
 const PAIRED_TOKEN = process.env
   .NEXT_PUBLIC_LIQUIDITY_TOKEN_ADDRESS as `0x${string}`;
+
+const REWARD_RECIPIENT = process.env
+  .NEXT_PUBLIC_REWARD_RECIPIENT as `0x${string}`;
 
 export const useClanker = () => {
   const { ready, authenticated } = usePrivy();
   const account = useAccount();
   const { data: walletClient } = useWalletClient(account);
-  const client = createPublicClient({ chain: baseSepolia, transport: http() });
+  const client = createPublicClient({ chain: base, transport: http() });
 
   const clanker = new Clanker({
-    // @ts-ignore, TODO: fix this
+    // @ts-ignore, TODO: fix this if possible
     publicClient: client,
     wallet: walletClient,
   });
@@ -34,7 +37,7 @@ export const useClanker = () => {
       symbol,
       type: "v4",
       tokenAdmin: account.address as `0x${string}`,
-      vanity: true,
+      vanity: false,
       pool: {
         pairedToken: PAIRED_TOKEN,
         positions: [
@@ -70,12 +73,36 @@ export const useClanker = () => {
           },
         ],
       },
+      fees: {
+        type: "static",
+        clankerFee: 0,
+        pairedFee: 100,
+      },
+      rewards: {
+        recipients: [
+          {
+            recipient: account.address as `0x${string}`,
+            admin: account.address as `0x${string}`,
+            bps: 9_000,
+          },
+          {
+            recipient: REWARD_RECIPIENT,
+            admin: REWARD_RECIPIENT,
+            bps: 1_000,
+          },
+        ],
+      },
+      vault: {
+        percentage: 50,
+        lockupDuration: 2592000,
+        vestingDuration: 2592000,
+      },
     });
 
     if (error) throw error;
     const { address } = await waitForTransaction();
     console.log(
-      `Deployed token to ${address} on chain ${baseSepolia.id}, tx hash: ${txHash}`
+      `Deployed token to ${address} on chain ${base.id}, tx hash: ${txHash}`
     );
     return { address, txHash };
   };
