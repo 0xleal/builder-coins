@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BuildersFund",
+  title: "Builders Fund",
   description: "Permissionless Index Fund for Web3 Builders",
 };
 

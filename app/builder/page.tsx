@@ -18,36 +18,41 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Rocket,
-  DollarSign,
   Users,
   TrendingUp,
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
+import { useClanker } from "@/hooks/useClanker";
 
 export default function BuilderPage() {
   const [tokenName, setTokenName] = useState("");
   const [tokenTicker, setTokenTicker] = useState("");
   const [description, setDescription] = useState("");
-  const [initialLiquidity, setInitialLiquidity] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [tokenAddress, setTokenAddress] = useState<`0x${string}` | null>();
+  const [txHash, setTxHash] = useState<`0x${string}` | null>();
+  const { handleDeploy } = useClanker();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    if (!tokenName || !tokenTicker) {
+      return;
+    }
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const { address, txHash } = await handleDeploy(tokenName, tokenTicker);
+      setIsSuccess(true);
+      setTokenAddress(address);
+      setTxHash(txHash);
+    } catch (error) {
+      console.error(error);
+    }
 
     setIsSubmitting(false);
-    setIsSuccess(true);
   };
-
-  const minLiquidityETH = 0.5;
-  const estimatedTokens = initialLiquidity
-    ? (Number.parseFloat(initialLiquidity) * 1000000).toFixed(0)
-    : "0";
 
   if (isSuccess) {
     return (
@@ -77,16 +82,20 @@ export default function BuilderPage() {
                     <p className="text-white font-semibold">${tokenTicker}</p>
                   </div>
                   <div>
-                    <p className="text-white/60 text-sm">Initial Liquidity</p>
+                    <p className="text-white/60 text-sm">Token Address</p>
                     <p className="text-white font-semibold">
-                      {initialLiquidity} ETH
+                      <a
+                        href={`https://sepolia.basescan.org/address/${tokenAddress}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {tokenAddress}
+                      </a>
                     </p>
                   </div>
                   <div>
-                    <p className="text-white/60 text-sm">Total Supply</p>
-                    <p className="text-white font-semibold">
-                      {estimatedTokens} {tokenTicker}
-                    </p>
+                    <p className="text-white/60 text-sm">Transaction Hash</p>
+                    <p className="text-white font-semibold">{txHash}</p>
                   </div>
                 </div>
               </CardContent>
@@ -209,45 +218,10 @@ export default function BuilderPage() {
                       </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="initial-liquidity" className="text-white">
-                        Initial Liquidity (ETH)
-                      </Label>
-                      <Input
-                        id="initial-liquidity"
-                        type="number"
-                        step="0.01"
-                        min={minLiquidityETH}
-                        placeholder={`Minimum ${minLiquidityETH} ETH`}
-                        value={initialLiquidity}
-                        onChange={(e) => setInitialLiquidity(e.target.value)}
-                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                        required
-                      />
-                      <p className="text-white/60 text-sm">
-                        Minimum {minLiquidityETH} ETH required to create initial
-                        liquidity pool
-                      </p>
-                    </div>
-
-                    {Number.parseFloat(initialLiquidity) < minLiquidityETH &&
-                      initialLiquidity && (
-                        <Alert className="bg-red-500/20 border-red-500/30">
-                          <AlertCircle className="h-4 w-4 text-red-400" />
-                          <AlertDescription className="text-red-200">
-                            Minimum liquidity of {minLiquidityETH} ETH is
-                            required to launch your token.
-                          </AlertDescription>
-                        </Alert>
-                      )}
-
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3"
-                      disabled={
-                        isSubmitting ||
-                        Number.parseFloat(initialLiquidity) < minLiquidityETH
-                      }
+                      disabled={isSubmitting || !tokenName || !tokenTicker}
                     >
                       {isSubmitting ? "Launching Token..." : "Launch Token"}
                     </Button>
@@ -266,18 +240,12 @@ export default function BuilderPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-white/70">Initial Supply</span>
-                    <span className="text-white font-semibold">
-                      {estimatedTokens} tokens
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
                     <span className="text-white/70">Your Allocation</span>
-                    <span className="text-white font-semibold">80%</span>
+                    <span className="text-white font-semibold">50%</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-white/70">Liquidity Pool</span>
-                    <span className="text-white font-semibold">20%</span>
+                    <span className="text-white font-semibold">50%</span>
                   </div>
                 </CardContent>
               </Card>
@@ -289,17 +257,6 @@ export default function BuilderPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex items-start space-x-3">
-                    <DollarSign className="h-5 w-5 text-green-400 mt-0.5" />
-                    <div>
-                      <p className="text-white font-medium">
-                        Minimum Liquidity
-                      </p>
-                      <p className="text-white/70 text-sm">
-                        At least {minLiquidityETH} ETH to create initial pool
-                      </p>
-                    </div>
-                  </div>
                   <div className="flex items-start space-x-3">
                     <Users className="h-5 w-5 text-blue-400 mt-0.5" />
                     <div>
@@ -329,7 +286,8 @@ export default function BuilderPage() {
                 <AlertCircle className="h-4 w-4 text-blue-400" />
                 <AlertDescription className="text-blue-200">
                   Once launched, your token will be evaluated by our AI fund
-                  manager for potential inclusion in the BuildersFund portfolio.
+                  manager for potential inclusion in the Builders Fund
+                  portfolio.
                 </AlertDescription>
               </Alert>
             </div>

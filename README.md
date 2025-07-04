@@ -1,10 +1,10 @@
-# BuildersFund - Permissionless Index Fund for Web3 Builders
+# Builders Fund - Permissionless Index Fund for Web3 Builders
 
 A decentralized index fund that invests in the most promising builders in the Web3 ecosystem. Built for ETHGlobal Cannes hackathon.
 
 ## 🚀 Project Overview
 
-BuildersFund is a permissionless index fund that supports builders in the Web3 ecosystem through a tokenized investment strategy. The fund's value is represented by a token that provides diversified exposure to builder tokens selected by AI agents.
+Builders Fund is a permissionless index fund that supports builders in the Web3 ecosystem through a tokenized investment strategy. The fund's value is represented by a token that provides diversified exposure to builder tokens selected by AI agents.
 
 ### Key Features
 

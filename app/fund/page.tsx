@@ -108,7 +108,7 @@ export default function FundPage() {
         {/* Fund Overview */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">
-            BuildersFund Index
+            Builders Fund Index
           </h1>
           <p className="text-white/80 text-lg">
             Diversified exposure to the most promising Web3 builders
@@ -181,7 +181,7 @@ export default function FundPage() {
               <CardHeader>
                 <CardTitle className="text-white">Trade Fund Token</CardTitle>
                 <CardDescription className="text-white/70">
-                  Buy or sell BuildersFund tokens
+                  Buy or sell Builders Fund tokens
                 </CardDescription>
               </CardHeader>
               <CardContent>

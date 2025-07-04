@@ -10,7 +10,7 @@ export function Navbar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
-            <span className="text-xl font-bold text-white">BuildersFund</span>
+            <span className="text-xl font-bold text-white">Builders Fund</span>
           </div>
           <div className="flex items-center space-x-6">
             <Link
