@@ -105,36 +105,7 @@ export default function FundPage() {
   // const [selectedBuilder, setSelectedBuilder] = useState(null)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Navigation */}
-      <nav className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/"
-                className="flex items-center space-x-2 text-white/80 hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back</span>
-              </Link>
-              <div className="flex items-center space-x-2">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
-                <span className="text-xl font-bold text-white">
-                  BuildersFund
-                </span>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-            >
-              Connect Wallet
-            </Button>
-          </div>
-        </div>
-      </nav>
-
+    <>
       <div className="container mx-auto px-4 py-8">
         {/* Fund Overview */}
         <div className="mb-8">
@@ -482,6 +453,6 @@ export default function FundPage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
