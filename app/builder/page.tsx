@@ -1,38 +1,54 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, Rocket, DollarSign, Users, TrendingUp, CheckCircle, AlertCircle } from "lucide-react"
+import { useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  ArrowLeft,
+  Rocket,
+  DollarSign,
+  Users,
+  TrendingUp,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 
 export default function BuilderPage() {
-  const [tokenName, setTokenName] = useState("")
-  const [tokenTicker, setTokenTicker] = useState("")
-  const [description, setDescription] = useState("")
-  const [initialLiquidity, setInitialLiquidity] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSuccess, setIsSuccess] = useState(false)
+  const [tokenName, setTokenName] = useState("");
+  const [tokenTicker, setTokenTicker] = useState("");
+  const [description, setDescription] = useState("");
+  const [initialLiquidity, setInitialLiquidity] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    setIsSubmitting(false)
-    setIsSuccess(true)
-  }
+    setIsSubmitting(false);
+    setIsSuccess(true);
+  };
 
-  const minLiquidityETH = 0.5
-  const estimatedTokens = initialLiquidity ? (Number.parseFloat(initialLiquidity) * 1000000).toFixed(0) : "0"
+  const minLiquidityETH = 0.5;
+  const estimatedTokens = initialLiquidity
+    ? (Number.parseFloat(initialLiquidity) * 1000000).toFixed(0)
+    : "0";
 
   if (isSuccess) {
     return (
@@ -42,16 +58,24 @@ export default function BuilderPage() {
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <Link href="/" className="flex items-center space-x-2 text-white/80 hover:text-white">
+                <Link
+                  href="/"
+                  className="flex items-center space-x-2 text-white/80 hover:text-white"
+                >
                   <ArrowLeft className="h-4 w-4" />
                   <span>Back</span>
                 </Link>
                 <div className="flex items-center space-x-2">
                   <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
-                  <span className="text-xl font-bold text-white">BuildersFund</span>
+                  <span className="text-xl font-bold text-white">
+                    BuildersFund
+                  </span>
                 </div>
               </div>
-              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+              <Button
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+              >
                 Connect Wallet
               </Button>
             </div>
@@ -63,10 +87,12 @@ export default function BuilderPage() {
             <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="h-10 w-10 text-white" />
             </div>
-            <h1 className="text-4xl font-bold text-white mb-4">Token Launched Successfully!</h1>
+            <h1 className="text-4xl font-bold text-white mb-4">
+              Token Launched Successfully!
+            </h1>
             <p className="text-white/80 text-lg mb-8">
-              Congratulations! Your token <strong>${tokenTicker}</strong> has been created and is now live on the
-              blockchain.
+              Congratulations! Your token <strong>${tokenTicker}</strong> has
+              been created and is now live on the blockchain.
             </p>
 
             <Card className="bg-white/5 border-white/10 backdrop-blur-sm mb-8">
@@ -82,7 +108,9 @@ export default function BuilderPage() {
                   </div>
                   <div>
                     <p className="text-white/60 text-sm">Initial Liquidity</p>
-                    <p className="text-white font-semibold">{initialLiquidity} ETH</p>
+                    <p className="text-white font-semibold">
+                      {initialLiquidity} ETH
+                    </p>
                   </div>
                   <div>
                     <p className="text-white/60 text-sm">Total Supply</p>
@@ -97,8 +125,10 @@ export default function BuilderPage() {
             <Alert className="bg-blue-500/20 border-blue-500/30 mb-8">
               <AlertCircle className="h-4 w-4 text-blue-400" />
               <AlertDescription className="text-blue-200">
-                Your token is now eligible for consideration by our AI fund manager. The algorithm will analyze your
-                token's performance and community engagement to determine if it should be included in the fund.
+                Your token is now eligible for consideration by our AI fund
+                manager. The algorithm will analyze your token&apos;s
+                performance and community engagement to determine if it should
+                be included in the fund.
               </AlertDescription>
             </Alert>
 
@@ -122,7 +152,7 @@ export default function BuilderPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -132,16 +162,24 @@ export default function BuilderPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center space-x-2 text-white/80 hover:text-white">
+              <Link
+                href="/"
+                className="flex items-center space-x-2 text-white/80 hover:text-white"
+              >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back</span>
               </Link>
               <div className="flex items-center space-x-2">
                 <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
-                <span className="text-xl font-bold text-white">BuildersFund</span>
+                <span className="text-xl font-bold text-white">
+                  BuildersFund
+                </span>
               </div>
             </div>
-            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+            <Button
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+            >
               Connect Wallet
             </Button>
           </div>
@@ -152,9 +190,12 @@ export default function BuilderPage() {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-white mb-4">Launch Your Builder Token</h1>
+            <h1 className="text-4xl font-bold text-white mb-4">
+              Launch Your Builder Token
+            </h1>
             <p className="text-white/80 text-lg">
-              Join the decentralized builder economy by creating your personal token
+              Join the decentralized builder economy by creating your personal
+              token
             </p>
           </div>
 
@@ -185,7 +226,9 @@ export default function BuilderPage() {
                         className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                         required
                       />
-                      <p className="text-white/60 text-sm">The full name of your token</p>
+                      <p className="text-white/60 text-sm">
+                        The full name of your token
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -196,12 +239,16 @@ export default function BuilderPage() {
                         id="token-ticker"
                         placeholder="e.g., ALEX"
                         value={tokenTicker}
-                        onChange={(e) => setTokenTicker(e.target.value.toUpperCase())}
+                        onChange={(e) =>
+                          setTokenTicker(e.target.value.toUpperCase())
+                        }
                         className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                         maxLength={6}
                         required
                       />
-                      <p className="text-white/60 text-sm">3-6 characters, will be prefixed with $</p>
+                      <p className="text-white/60 text-sm">
+                        3-6 characters, will be prefixed with $
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -216,7 +263,9 @@ export default function BuilderPage() {
                         className="bg-white/10 border-white/20 text-white placeholder:text-white/50 min-h-[100px]"
                         required
                       />
-                      <p className="text-white/60 text-sm">Describe your background and projects</p>
+                      <p className="text-white/60 text-sm">
+                        Describe your background and projects
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -235,23 +284,29 @@ export default function BuilderPage() {
                         required
                       />
                       <p className="text-white/60 text-sm">
-                        Minimum {minLiquidityETH} ETH required to create initial liquidity pool
+                        Minimum {minLiquidityETH} ETH required to create initial
+                        liquidity pool
                       </p>
                     </div>
 
-                    {Number.parseFloat(initialLiquidity) < minLiquidityETH && initialLiquidity && (
-                      <Alert className="bg-red-500/20 border-red-500/30">
-                        <AlertCircle className="h-4 w-4 text-red-400" />
-                        <AlertDescription className="text-red-200">
-                          Minimum liquidity of {minLiquidityETH} ETH is required to launch your token.
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                    {Number.parseFloat(initialLiquidity) < minLiquidityETH &&
+                      initialLiquidity && (
+                        <Alert className="bg-red-500/20 border-red-500/30">
+                          <AlertCircle className="h-4 w-4 text-red-400" />
+                          <AlertDescription className="text-red-200">
+                            Minimum liquidity of {minLiquidityETH} ETH is
+                            required to launch your token.
+                          </AlertDescription>
+                        </Alert>
+                      )}
 
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3"
-                      disabled={isSubmitting || Number.parseFloat(initialLiquidity) < minLiquidityETH}
+                      disabled={
+                        isSubmitting ||
+                        Number.parseFloat(initialLiquidity) < minLiquidityETH
+                      }
                     >
                       {isSubmitting ? "Launching Token..." : "Launch Token"}
                     </Button>
@@ -264,12 +319,16 @@ export default function BuilderPage() {
             <div className="space-y-6">
               <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="text-white text-lg">Token Economics</CardTitle>
+                  <CardTitle className="text-white text-lg">
+                    Token Economics
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-white/70">Initial Supply</span>
-                    <span className="text-white font-semibold">{estimatedTokens} tokens</span>
+                    <span className="text-white font-semibold">
+                      {estimatedTokens} tokens
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-white/70">Your Allocation</span>
@@ -284,28 +343,42 @@ export default function BuilderPage() {
 
               <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="text-white text-lg">Requirements</CardTitle>
+                  <CardTitle className="text-white text-lg">
+                    Requirements
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-start space-x-3">
                     <DollarSign className="h-5 w-5 text-green-400 mt-0.5" />
                     <div>
-                      <p className="text-white font-medium">Minimum Liquidity</p>
-                      <p className="text-white/70 text-sm">At least {minLiquidityETH} ETH to create initial pool</p>
+                      <p className="text-white font-medium">
+                        Minimum Liquidity
+                      </p>
+                      <p className="text-white/70 text-sm">
+                        At least {minLiquidityETH} ETH to create initial pool
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">
                     <Users className="h-5 w-5 text-blue-400 mt-0.5" />
                     <div>
-                      <p className="text-white font-medium">Community Building</p>
-                      <p className="text-white/70 text-sm">Engage with holders and build your reputation</p>
+                      <p className="text-white font-medium">
+                        Community Building
+                      </p>
+                      <p className="text-white/70 text-sm">
+                        Engage with holders and build your reputation
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">
                     <TrendingUp className="h-5 w-5 text-purple-400 mt-0.5" />
                     <div>
-                      <p className="text-white font-medium">Fund Consideration</p>
-                      <p className="text-white/70 text-sm">AI algorithm evaluates tokens for fund inclusion</p>
+                      <p className="text-white font-medium">
+                        Fund Consideration
+                      </p>
+                      <p className="text-white/70 text-sm">
+                        AI algorithm evaluates tokens for fund inclusion
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -314,8 +387,8 @@ export default function BuilderPage() {
               <Alert className="bg-blue-500/20 border-blue-500/30">
                 <AlertCircle className="h-4 w-4 text-blue-400" />
                 <AlertDescription className="text-blue-200">
-                  Once launched, your token will be evaluated by our AI fund manager for potential inclusion in the
-                  BuildersFund portfolio.
+                  Once launched, your token will be evaluated by our AI fund
+                  manager for potential inclusion in the BuildersFund portfolio.
                 </AlertDescription>
               </Alert>
             </div>
@@ -323,5 +396,5 @@ export default function BuilderPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
