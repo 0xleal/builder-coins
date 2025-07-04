@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "./ui/button";
 import Login from "./login";
 
 export function Navbar() {
