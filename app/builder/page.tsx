@@ -38,12 +38,16 @@ export default function BuilderPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    if (!tokenName || !tokenTicker) {
+    if (!tokenName || !tokenTicker || !description) {
       return;
     }
 
     try {
-      const { address, txHash } = await handleDeploy(tokenName, tokenTicker);
+      const { address, txHash } = await handleDeploy(
+        tokenName,
+        tokenTicker,
+        description
+      );
       setIsSuccess(true);
       setTokenAddress(address);
       setTxHash(txHash);
@@ -85,17 +89,25 @@ export default function BuilderPage() {
                     <p className="text-white/60 text-sm">Token Address</p>
                     <p className="text-white font-semibold">
                       <a
-                        href={`https://sepolia.basescan.org/address/${tokenAddress}`}
+                        href={`https://basescan.org/address/${tokenAddress}`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        {tokenAddress}
+                        {tokenAddress?.slice(0, 6)}...{tokenAddress?.slice(-4)}
                       </a>
                     </p>
                   </div>
                   <div>
                     <p className="text-white/60 text-sm">Transaction Hash</p>
-                    <p className="text-white font-semibold">{txHash}</p>
+                    <p className="text-white font-semibold">
+                      <a
+                        href={`https://basescan.org/tx/${txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {txHash?.slice(0, 6)}...{txHash?.slice(-4)}
+                      </a>
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -221,7 +233,12 @@ export default function BuilderPage() {
                     <Button
                       type="submit"
                       className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3"
-                      disabled={isSubmitting || !tokenName || !tokenTicker}
+                      disabled={
+                        isSubmitting ||
+                        !tokenName ||
+                        !tokenTicker ||
+                        !description
+                      }
                     >
                       {isSubmitting ? "Launching Token..." : "Launch Token"}
                     </Button>

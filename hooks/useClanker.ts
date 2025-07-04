@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useAccount, useWalletClient } from "wagmi";
 import { createPublicClient, http } from "viem";
 import { Clanker } from "clanker-sdk/v4";
@@ -15,6 +15,7 @@ const REWARD_RECIPIENT = process.env
 export const useClanker = () => {
   const { ready, authenticated } = usePrivy();
   const account = useAccount();
+  const { wallets } = useWallets();
   const { data: walletClient } = useWalletClient(account);
   const client = createPublicClient({ chain: base, transport: http() });
 
@@ -24,7 +25,11 @@ export const useClanker = () => {
     wallet: walletClient,
   });
 
-  const handleDeploy = async (name: string, symbol: string) => {
+  const handleDeploy = async (
+    name: string,
+    symbol: string,
+    description: string
+  ) => {
     if (!ready) {
       throw new Error("Not ready");
     }
@@ -32,44 +37,40 @@ export const useClanker = () => {
       throw new Error("Not authenticated");
     }
 
+    const wallet = wallets.find(
+      (w) => w.address.toLowerCase() === account.address?.toLowerCase()
+    );
+
+    if (!wallet) {
+      throw new Error("Wallet not found");
+    }
+
+    await wallet.switchChain(base.id);
+
     const { txHash, waitForTransaction, error } = await clanker.deploy({
       name,
       symbol,
+      metadata: {
+        description: `${symbol} token - ${description}`,
+        socialMediaUrls: [],
+        auditUrls: [],
+      },
       type: "v4",
       tokenAdmin: account.address as `0x${string}`,
       vanity: false,
       pool: {
         pairedToken: PAIRED_TOKEN,
+        tickIfToken0IsClanker: -60000,
         positions: [
           {
-            tickLower: -921000,
-            tickUpper: -900000,
-            positionBps: 1500,
+            tickLower: -60000,
+            tickUpper: -20000,
+            positionBps: 8000,
           },
           {
-            tickLower: -900000,
-            tickUpper: -800000,
-            positionBps: 1500,
-          },
-          {
-            tickLower: -800000,
-            tickUpper: -600000,
-            positionBps: 1500,
-          },
-          {
-            tickLower: -600000,
-            tickUpper: -400000,
-            positionBps: 1500,
-          },
-          {
-            tickLower: -400000,
-            tickUpper: -200000,
-            positionBps: 1500,
-          },
-          {
-            tickLower: -200000,
-            tickUpper: 0,
-            positionBps: 1000,
+            tickLower: -20000,
+            tickUpper: 100000,
+            positionBps: 2000,
           },
         ],
       },
