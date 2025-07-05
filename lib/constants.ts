@@ -26,3 +26,9 @@ export const DEXSCREENER_BASE_URL =
 
 export const FUND_MANAGER_ADDRESS = process.env
   .NEXT_PUBLIC_FUND_MANAGER_ADDRESS! as `0x${string}`;
+
+export const NON_INVESTABLE_TOKENS = [
+  ETH_TOKEN.address.toLowerCase(),
+  TALENT_TOKEN.address.toLowerCase(),
+  "native",
+];
