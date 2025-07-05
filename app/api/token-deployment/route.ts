@@ -179,3 +179,21 @@ export async function POST(req: NextRequest) {
 }
 
 // GET /api/token-deployment, returns all token deployments paginated 100 per page
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const page = Number(searchParams.get("page")) || 1;
+  const limit = Number(searchParams.get("limit")) || 100;
+
+  const { data, error } = await supabase
+    .from("token_deployments")
+    .select("*")
+    .order("deployment_block_number", { ascending: false })
+    .range((page - 1) * limit, page * limit - 1);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(data);
+}
