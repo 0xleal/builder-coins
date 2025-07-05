@@ -7,7 +7,6 @@ from uagents_core.contrib.protocols.chat import (
     TextContent,
     chat_protocol_spec,
 )
-from langchain_openai import ChatOpenAI
 from typing import List, Dict, Any, Optional
 import numpy as np
 import json
@@ -16,10 +15,14 @@ import uuid
 from dataclasses import dataclass
 from web3 import Web3
 import os
+import requests
+from dotenv import load_dotenv
+from uniswap_universal_router import Uniswap
+from uniswap_universal_router import ERC20_ABI
 
-# Web3 setup for Base network
-WEB3_PROVIDER_URL = "https://sepolia.base.org"
-w3 = Web3(Web3.HTTPProvider(WEB3_PROVIDER_URL))
+load_dotenv()
+
+web3 = Web3(Web3.HTTPProvider(os.environ.get('WEB3_PROVIDER_URL')))
 
 @dataclass
 class TalentProfile:
@@ -27,12 +30,10 @@ class TalentProfile:
     profile_id: str
     name: str
     builder_score: float
-    summary: str
-    skills: List[str]
-    projects: List[str]
-    experience_years: int
-    token_address: Optional[str] = None
-    token_symbol: Optional[str] = None
+    token_address: str
+    token_symbol: str
+    token_name: str
+    deployer_address: str
 
 @dataclass
 class FundAllocation:
@@ -47,7 +48,7 @@ class FundAllocation:
 class FundRequest(Model):
     """Request model for creating an index fund"""
     target_count: int = 50
-    min_builder_score: float = 75.0
+    min_builder_score: float = 0.0  # Lowered to include more realistic builder scores
     max_allocation: float = 5.0
     min_allocation: float = 0.5
 
@@ -65,355 +66,323 @@ class BuilderTokensIndexFundAgent:
     """AI Agent for creating and managing an index fund of Builder Tokens"""
     
     def __init__(self):
-        self.llm = ChatOpenAI(
-            model="gpt-4",
-            temperature=0.1,
-            api_key=os.environ.get('OPENAI_API_KEY')
-        )
-        self.talent_profiles = self._generate_simulated_talent_profiles()
+        self.api_base_url = "https://builder-coins.vercel.app/api"
+        self.api_key = os.environ.get('API_KEY')
+        self.talent_api_base_url = "https://api.talentprotocol.com/"
+        self.talent_api_key = os.environ.get('TALENT_API_KEY')
+        self.talent_profiles = []
         self.fund_allocations = []
+        self.talent_token_address = "0x9a33406165f562E16C3abD82fd1185482E01b49a"
+        self.wallet_address = os.environ.get('WALLET_ADDRESS')
+        self.private_key = os.environ.get('PRIVATE_KEY')
+        self.provider = os.environ.get('WEB3_PROVIDER_URL')
+        self.web3 = web3
+        self.uniswap = Uniswap(
+            wallet_address=self.wallet_address,
+            private_key=self.private_key,
+            provider=self.provider,
+            web3=self.web3
+        )
         
-    def _generate_simulated_talent_profiles(self) -> List[TalentProfile]:
-        """Generate simulated Talent Protocol profiles with Builder Scores"""
-        
-        # Simulated data representing diverse builders
-        profiles_data = [
-            {
-                "name": "Alex Chen",
-                "builder_score": 94.5,
-                "summary": "Full-stack developer specializing in DeFi protocols. Built multiple successful DEX platforms with over $50M in TVL. Expert in Solidity, React, and smart contract security.",
-                "skills": ["Solidity", "React", "DeFi", "Smart Contracts", "TypeScript"],
-                "projects": ["DeFiSwap", "YieldFarm Pro", "Liquidity Aggregator"],
-                "experience_years": 6,
-                "token_symbol": "ALEX"
-            },
-            {
-                "name": "Sarah Kim",
-                "builder_score": 92.3,
-                "summary": "Smart contract auditor and security researcher. Conducted audits for over 100 protocols with zero critical vulnerabilities missed. Specializes in formal verification.",
-                "skills": ["Security", "Auditing", "Formal Verification", "Rust", "Solidity"],
-                "projects": ["SecureAudit", "ChainGuard", "Vulnerability Scanner"],
-                "experience_years": 8,
-                "token_symbol": "SARAH"
-            },
-            {
-                "name": "Marcus Johnson",
-                "builder_score": 89.7,
-                "summary": "NFT marketplace creator and digital artist. Built one of the largest NFT platforms with 1M+ users. Pioneer in NFT standards and cross-chain interoperability.",
-                "skills": ["NFT", "Digital Art", "Marketplace", "Ethereum", "IPFS"],
-                "projects": ["ArtChain", "NFTLaunch", "CrossChain Bridge"],
-                "experience_years": 5,
-                "token_symbol": "MARC"
-            },
-            {
-                "name": "Emily Rodriguez",
-                "builder_score": 87.2,
-                "summary": "Layer 2 scaling solutions architect. Designed and implemented multiple L2 solutions reducing gas costs by 90%. Expert in ZK-proofs and optimistic rollups.",
-                "skills": ["Layer 2", "ZK-Proofs", "Optimistic Rollups", "Scalability", "Cryptography"],
-                "projects": ["FastChain", "ScaleUp", "ZK-Rollup"],
-                "experience_years": 7,
-                "token_symbol": "EMILY"
-            },
-            {
-                "name": "David Park",
-                "builder_score": 91.8,
-                "summary": "DAO governance and treasury management expert. Built governance systems for protocols managing $200M+ in assets. Specialist in tokenomics and incentive design.",
-                "skills": ["DAO", "Governance", "Treasury", "Tokenomics", "Economics"],
-                "projects": ["GovernanceDAO", "TreasuryManager", "IncentiveDesign"],
-                "experience_years": 9,
-                "token_symbol": "DAVID"
-            },
-            {
-                "name": "Lisa Wang",
-                "builder_score": 88.9,
-                "summary": "Cross-chain bridge and interoperability developer. Created bridges connecting 15+ blockchains with $100M+ in daily volume. Expert in atomic swaps and liquidity pools.",
-                "skills": ["Cross-chain", "Bridges", "Interoperability", "Atomic Swaps", "Liquidity"],
-                "projects": ["BridgeChain", "CrossSwap", "LiquidityPool"],
-                "experience_years": 6,
-                "token_symbol": "LISA"
-            },
-            {
-                "name": "James Wilson",
-                "builder_score": 86.4,
-                "summary": "GameFi and metaverse developer. Built successful play-to-earn games with 500K+ active users. Specialist in 3D graphics and blockchain gaming integration.",
-                "skills": ["GameFi", "Metaverse", "Unity", "3D Graphics", "Gaming"],
-                "projects": ["MetaGame", "PlayToEarn", "VirtualWorld"],
-                "experience_years": 4,
-                "token_symbol": "JAMES"
-            },
-            {
-                "name": "Maria Garcia",
-                "builder_score": 90.1,
-                "summary": "Privacy and zero-knowledge proof researcher. Developed privacy-preserving DeFi protocols using advanced cryptographic techniques. Expert in zk-SNARKs and confidential transactions.",
-                "skills": ["Privacy", "Zero-Knowledge", "Cryptography", "zk-SNARKs", "Confidential"],
-                "projects": ["PrivacyDeFi", "ConfidentialSwap", "ZK-Protocol"],
-                "experience_years": 8,
-                "token_symbol": "MARIA"
-            },
-            {
-                "name": "Robert Taylor",
-                "builder_score": 85.7,
-                "summary": "Oracle and data feed developer. Built decentralized oracle networks providing data to 1000+ smart contracts. Specialist in data validation and consensus mechanisms.",
-                "skills": ["Oracles", "Data Feeds", "Consensus", "Validation", "Networks"],
-                "projects": ["DataOracle", "FeedNetwork", "ConsensusChain"],
-                "experience_years": 7,
-                "token_symbol": "ROBERT"
-            },
-            {
-                "name": "Anna Thompson",
-                "builder_score": 93.2,
-                "summary": "DeFi yield optimization and strategy developer. Created automated yield farming strategies generating 25%+ APY. Expert in MEV protection and gas optimization.",
-                "skills": ["Yield Farming", "MEV", "Gas Optimization", "Strategies", "Automation"],
-                "projects": ["YieldOptimizer", "MEVProtector", "GasSaver"],
-                "experience_years": 5,
-                "token_symbol": "ANNA"
+    def _fetch_token_deployments(self, page: int = 1, limit: int = 100) -> List[Dict[str, Any]]:
+        """Fetch token deployments from the API"""
+        try:
+            url = f"{self.api_base_url}/token-deployment"
+            params = {"page": page, "limit": limit}
+            
+            response = requests.get(url, params=params, timeout=30)
+            response.raise_for_status()
+            
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching token deployments: {e}")
+            return []
+    
+    def _fetch_talent_profile(self, wallet_address: str) -> Optional[Dict[str, Any]]:
+        """Fetch a profile from Talent Protocol API using wallet address"""
+        try:
+            url = f"{self.talent_api_base_url}/profile"
+            params = {"id": wallet_address, "account_source": "wallet"}
+            
+            headers = {}
+            if self.talent_api_key:
+                headers["X-API-KEY"] = self.talent_api_key
+            
+            response = requests.get(url, params=params, headers=headers, timeout=15)
+            
+            if response.status_code == 200:
+                return response.json()
+            return None
+                
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching talent profile for {wallet_address}: {e}")
+            return None
+    
+    def _fetch_builder_score(self, wallet_address: str) -> Optional[float]:
+        """Fetch Builder Score from Talent Protocol API using wallet address"""
+        try:
+            url = f"{self.talent_api_base_url}/score"
+            params = {
+                "id": wallet_address,
+                "account_source": "wallet"
             }
-        ]
+            
+            headers = {}
+            if self.talent_api_key:
+                headers["X-API-KEY"] = self.talent_api_key
+            
+            response = requests.get(url, params=params, headers=headers, timeout=15)
+            
+            if response.status_code == 200:
+                score_data = response.json()
+                if 'score' in score_data and score_data['score'] is not None:
+                    print(f"Builder score for {wallet_address}: {score_data['score']['points']}")
+                    return float(score_data['score']['points'])
+            return None
+                
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching builder score for {wallet_address}: {e}")
+            return None
+    
+    def _convert_to_talent_profiles(self, token_deployments: List[Dict[str, Any]]) -> List[TalentProfile]:
+        """Convert token deployment data to TalentProfile objects using Talent Protocol data"""
+        profiles = []
         
-        # Generate 50 profiles by expanding the base data
-        all_profiles = []
-        for i, base_profile in enumerate(profiles_data):
-            # Create variations of each base profile
-            for j in range(5):  # 5 variations per base profile = 50 total
-                profile_id = f"talent_{i*5 + j + 1}"
+        for i, token_data in enumerate(token_deployments):
+            try:
+                deployer_address = token_data.get('deployer_address', '')
+                if not deployer_address:
+                    continue
                 
-                # Add some variation to scores and details
-                score_variation = np.random.normal(0, 2)  # ±2 points variation
-                adjusted_score = max(70, min(100, base_profile["builder_score"] + score_variation))
+                # Fetch profile and builder score from Talent Protocol
+                talent_profile = self._fetch_talent_profile(deployer_address)
+                builder_score = self._fetch_builder_score(deployer_address)
                 
-                # Generate token address (simulated)
-                token_address = f"0x{''.join([str(np.random.randint(0, 16)) for _ in range(40)])}"
+                # Only include profiles with valid builder scores
+                if builder_score is None:
+                    print(f"✗ No builder score found for {deployer_address[:10]}...")
+                    continue
+                
+                # Extract name from profile or use default
+                name = f"Builder {deployer_address[:6]}...{deployer_address[-4:]}"
+                if talent_profile and 'profile' in talent_profile:
+                    tp_data = talent_profile['profile']
+                    name = tp_data.get('display_name') or tp_data.get('name') or name
+                
+                print(f"✓ Found builder score {builder_score} for {name}")
                 
                 profile = TalentProfile(
-                    profile_id=profile_id,
-                    name=f"{base_profile['name']} {chr(65+j)}" if j > 0 else base_profile['name'],
-                    builder_score=adjusted_score,
-                    summary=base_profile['summary'],
-                    skills=base_profile['skills'],
-                    projects=base_profile['projects'],
-                    experience_years=base_profile['experience_years'],
-                    token_address=token_address,
-                    token_symbol=f"{base_profile['token_symbol']}{j+1}" if j > 0 else base_profile['token_symbol']
+                    profile_id=f"builder_{i+1}",
+                    name=name,
+                    builder_score=builder_score,
+                    token_address=token_data.get('token_address', ''),
+                    token_symbol=token_data.get('token_symbol', ''),
+                    token_name=token_data.get('token_name', ''),
+                    deployer_address=deployer_address
                 )
-                all_profiles.append(profile)
-        
-        return all_profiles
-
-    def fetch_talent_profiles(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """Fetch Talent Protocol profiles with Builder Scores"""
-        profiles = self.talent_profiles[:limit]
-        return [
-            {
-                "profile_id": p.profile_id,
-                "name": p.name,
-                "builder_score": p.builder_score,
-                "summary": p.summary,
-                "skills": p.skills,
-                "projects": p.projects,
-                "experience_years": p.experience_years,
-                "token_address": p.token_address,
-                "token_symbol": p.token_symbol
-            }
-            for p in profiles
-        ]
-
-    def analyze_builder_scores(self, profiles: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Analyze Builder Scores and provide statistical insights"""
-        scores = [p["builder_score"] for p in profiles]
-        
-        return {
-            "total_profiles": len(profiles),
-            "average_score": np.mean(scores),
-            "median_score": np.median(scores),
-            "score_std": np.std(scores),
-            "min_score": min(scores),
-            "max_score": max(scores),
-            "score_distribution": {
-                "90+": len([s for s in scores if s >= 90]),
-                "80-89": len([s for s in scores if 80 <= s < 90]),
-                "70-79": len([s for s in scores if 70 <= s < 80]),
-                "<70": len([s for s in scores if s < 70])
-            }
-        }
-
-    def select_top_builders(self, profiles: List[Dict[str, Any]], target_count: int = 50, min_score: float = 75.0) -> List[Dict[str, Any]]:
-        """Select top builders based on Builder Score and profile quality"""
-        # Filter by minimum score
-        qualified_profiles = [p for p in profiles if p["builder_score"] >= min_score]
-        
-        # Sort by builder score (descending)
-        sorted_profiles = sorted(qualified_profiles, key=lambda x: x["builder_score"], reverse=True)
-        
-        # Apply additional filters for quality
-        final_profiles = []
-        for profile in sorted_profiles:
-            # Must have token address (simulated deployment)
-            if not profile.get("token_address"):
-                continue
                 
-            # Must have meaningful summary
-            if len(profile["summary"]) < 50:
-                continue
+                profiles.append(profile)
                 
-            final_profiles.append(profile)
-            
-            if len(final_profiles) >= target_count:
-                break
+            except Exception as e:
+                print(f"Error processing token data {i}: {e}")
+                continue
         
-        return final_profiles
+        return profiles
+    
+    def _load_talent_profiles(self) -> List[TalentProfile]:
+        """Load talent profiles from the API"""
+        if not self.talent_profiles:
+            print("Fetching token deployments from API...")
+            
+            # Fetch multiple pages to get more data
+            all_deployments = []
+            for page in range(1, 4):  # Fetch first 3 pages
+                deployments = self._fetch_token_deployments(page=page, limit=100)
+                if not deployments:
+                    break
+                all_deployments.extend(deployments)
+            
+            print(f"Fetched {len(all_deployments)} token deployments")
+            
+            # Convert to talent profiles
+            self.talent_profiles = self._convert_to_talent_profiles(all_deployments)
+            print(f"Created {len(self.talent_profiles)} talent profiles with valid builder scores")
+        
+        return self.talent_profiles
 
-    def calculate_optimal_weights(self, selected_builders: List[Dict[str, Any]], max_allocation: float = 5.0, min_allocation: float = 0.5) -> List[Dict[str, Any]]:
-        """Calculate optimal allocation weights for selected builders"""
+    def calculate_allocations(self, profiles: List[TalentProfile], target_count: int = 50, 
+                            min_score: float = 0.0, max_allocation: float = 5.0, 
+                            min_allocation: float = 0.5) -> List[Dict[str, Any]]:
+        """Calculate allocations based solely on builder scores"""
         
-        # Multi-factor scoring model
-        def calculate_composite_score(profile: Dict[str, Any]) -> float:
-            builder_score = profile["builder_score"] / 100.0  # Normalize to 0-1
-            
-            # Profile quality score (based on summary length and skills)
-            summary_quality = min(1.0, len(profile["summary"]) / 200.0)
-            skills_diversity = min(1.0, len(profile["skills"]) / 8.0)
-            experience_bonus = min(1.0, profile["experience_years"] / 10.0)
-            
-            # Composite score calculation
-            composite_score = (
-                builder_score * 0.4 +  # Builder Score (40% weight)
-                summary_quality * 0.25 +  # Profile Quality (25% weight)
-                skills_diversity * 0.2 +  # Skills Diversity (20% weight)
-                experience_bonus * 0.15  # Experience (15% weight)
-            )
-            
-            return composite_score
+        # Filter by minimum score and sort by builder score
+        qualified_profiles = [p for p in profiles if p.builder_score >= min_score]
+        qualified_profiles.sort(key=lambda x: x.builder_score, reverse=True)
         
-        # Calculate composite scores
-        builders_with_scores = []
-        for builder in selected_builders:
-            composite_score = calculate_composite_score(builder)
-            builders_with_scores.append({
-                **builder,
-                "composite_score": composite_score
-            })
+        # Take top profiles up to target count
+        selected_profiles = qualified_profiles[:target_count]
         
-        # Sort by composite score
-        builders_with_scores.sort(key=lambda x: x["composite_score"], reverse=True)
+        if not selected_profiles:
+            return []
         
-        # Calculate weights using softmax-like distribution
-        scores = np.array([b["composite_score"] for b in builders_with_scores])
-        exp_scores = np.exp(scores * 2)  # Temperature parameter
+        # Calculate allocation weights based on builder scores
+        scores = np.array([p.builder_score for p in selected_profiles])
+        
+        # Use softmax to convert scores to weights
+        exp_scores = np.exp(scores / 100)  # Scale down for numerical stability
         weights = exp_scores / np.sum(exp_scores)
         
-        # Apply constraints
-        min_weight = min_allocation / 100.0
-        max_weight = max_allocation / 100.0
+        # Apply allocation constraints (adjust for small fund sizes)
+        num_tokens = len(selected_profiles)
         
-        # Normalize weights to meet constraints
-        normalized_weights = []
-        for i, weight in enumerate(weights):
-            constrained_weight = max(min_weight, min(max_weight, weight))
-            normalized_weights.append(constrained_weight)
+        # For small funds, increase max allocation to allow meaningful differentiation
+        if num_tokens <= 5:
+            effective_max_allocation = 90.0  # Allow up to 90% for very small funds
+        elif num_tokens <= 10:
+            effective_max_allocation = max(max_allocation, 100.0 / num_tokens * 1.5)  # Up to 1.5x equal weight
+        else:
+            effective_max_allocation = max_allocation
+            
+        min_weight = min_allocation / 100.0
+        max_weight = effective_max_allocation / 100.0
+        
+        # Constrain weights
+        constrained_weights = np.clip(weights, min_weight, max_weight)
         
         # Renormalize to sum to 1
-        total_weight = sum(normalized_weights)
-        final_weights = [w / total_weight for w in normalized_weights]
+        constrained_weights = constrained_weights / np.sum(constrained_weights)
         
         # Create allocation objects
         allocations = []
-        for i, builder in enumerate(builders_with_scores):
-            allocation_percentage = final_weights[i] * 100
-            
-            # Generate reasoning
-            reasoning = f"Selected based on high Builder Score ({builder['builder_score']:.1f}), " \
-                       f"strong profile quality, diverse skills ({len(builder['skills'])} areas), " \
-                       f"and {builder['experience_years']} years of experience. " \
-                       f"Composite score: {builder['composite_score']:.3f}"
+        for i, profile in enumerate(selected_profiles):
+            allocation_percentage = constrained_weights[i] * 100
             
             allocations.append({
-                "token_address": builder["token_address"],
-                "token_symbol": builder["token_symbol"],
-                "builder_name": builder["name"],
+                "token_address": profile.token_address,
+                "token_symbol": profile.token_symbol,
+                "builder_name": profile.name,
                 "allocation_percentage": round(allocation_percentage, 2),
-                "builder_score": builder["builder_score"],
-                "composite_score": builder["composite_score"],
-                "reasoning": reasoning
+                "builder_score": profile.builder_score,
+                "reasoning": f"Allocation based on Talent Protocol Builder Score of {profile.builder_score}"
             })
         
         return allocations
 
-    def generate_fund_report(self, allocations: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Generate comprehensive fund report with analysis"""
-        
-        total_allocation = sum(a["allocation_percentage"] for a in allocations)
-        avg_builder_score = np.mean([a["builder_score"] for a in allocations])
-        
-        # Calculate diversity metrics
-        skills_set = set()
-        for allocation in allocations:
-            # Find corresponding profile
-            profile = next((p for p in self.talent_profiles if p.token_address == allocation["token_address"]), None)
-            if profile:
-                skills_set.update(profile.skills)
-        
-        # Risk analysis
-        allocations_sorted = sorted(allocations, key=lambda x: x["allocation_percentage"], reverse=True)
-        concentration_risk = allocations_sorted[0]["allocation_percentage"]  # Largest allocation
-        
-        report = {
-            "fund_summary": {
-                "total_tokens": len(allocations),
-                "total_allocation": round(total_allocation, 2),
-                "average_builder_score": round(avg_builder_score, 1),
-                "unique_skills": len(skills_set),
-                "concentration_risk": round(concentration_risk, 2)
-            },
-            "top_allocations": allocations_sorted[:10],
-            "risk_metrics": {
-                "concentration_risk": "Low" if concentration_risk < 3 else "Medium" if concentration_risk < 5 else "High",
-                "diversification_score": round(len(skills_set) / len(allocations), 2),
-                "quality_score": round(avg_builder_score / 100, 2)
-            },
-            "generated_at": datetime.now().isoformat(),
-            "fund_id": str(uuid.uuid4())
-        }
-        
-        return report
-
     def create_index_fund(self, request: FundRequest) -> FundResponse:
         """Main method to create the index fund"""
         
-        # Step 1: Fetch talent profiles
-        profiles = self.fetch_talent_profiles(limit=100)
+        # Load talent profiles
+        profiles = self._load_talent_profiles()
         
-        # Step 2: Analyze builder scores
-        score_analysis = self.analyze_builder_scores(profiles)
+        if not profiles:
+            raise Exception("No profiles with valid builder scores found")
         
-        # Step 3: Select top builders
-        selected_builders = self.select_top_builders(
-            profiles, 
+        # Calculate allocations
+        allocations = self.calculate_allocations(
+            profiles,
             target_count=request.target_count,
-            min_score=request.min_builder_score
-        )
-        
-        # Step 4: Calculate optimal weights
-        allocations = self.calculate_optimal_weights(
-            selected_builders,
+            min_score=request.min_builder_score,
             max_allocation=request.max_allocation,
             min_allocation=request.min_allocation
         )
+
+        print(f"Allocations: {allocations}")
+        print(f"Profiles: {profiles}")
         
-        # Step 5: Generate fund report
-        fund_report = self.generate_fund_report(allocations)
+        if not allocations:
+            raise Exception("No qualified profiles found for fund creation")
+        
+        # Calculate metrics
+        total_allocation = sum(a["allocation_percentage"] for a in allocations)
+        avg_builder_score = np.mean([a["builder_score"] for a in allocations])
+        max_single_allocation = max(a["allocation_percentage"] for a in allocations)
+        
+        # Generate fund report
+        fund_id = str(uuid.uuid4())
+        risk_metrics = {
+            "concentration_risk": "Low" if max_single_allocation < 3 else "Medium" if max_single_allocation < 5 else "High",
+            "diversification_score": round(len(allocations) / request.target_count, 2),
+            "quality_score": round(avg_builder_score / 1000, 2)
+        }
         
         # Store allocations
         self.fund_allocations = allocations
+
+        # Execute fund purchases
+        # TODO: Use Uniswap V4 to purchase tokens
+        # self.execute_fund_purchases(allocations)
+
+        self.execute_save_strategy_to_api(allocations)
         
         return FundResponse(
-            fund_id=fund_report["fund_id"],
-            total_tokens=fund_report["fund_summary"]["total_tokens"],
-            total_allocation=fund_report["fund_summary"]["total_allocation"],
-            average_builder_score=fund_report["fund_summary"]["average_builder_score"],
+            fund_id=fund_id,
+            total_tokens=len(allocations),
+            total_allocation=round(total_allocation, 2),
+            average_builder_score=round(avg_builder_score, 1),
             allocations=allocations,
-            risk_metrics=fund_report["risk_metrics"],
-            generated_at=fund_report["generated_at"]
+            risk_metrics=risk_metrics,
+            generated_at=datetime.now().isoformat()
         )
+
+    def execute_fund_purchases(self, allocations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Execute token purchases using Uniswap V4"""
+        if not self.uniswap:
+            raise Exception("Uniswap not initialized")
+            
+        # Get the agent's wallet address
+        wallet_address = self.uniswap.wallet_address
+        print(f"Wallet address: {wallet_address}")
+
+        # Get the agent's balance for $TALENT token
+        token = self.uniswap.w3.eth.contract(address=self.talent_token_address, abi=ERC20_ABI)
+        balance = token.functions.balanceOf(wallet_address).call()
+        print(f"Balance: {balance}")
+
+        for allocation in allocations:
+            token_address = allocation["token_address"]
+            
+            allocation_amount = allocation["allocation_percentage"] * balance / 100
+            print(f"Allocation amount: {allocation_amount}")
+
+            # Round down to 6 decimal places
+            rounded_allocation_amount = int(allocation_amount * 10**6) / 10**6
+
+            amount_in_wei = self.web3.to_wei(rounded_allocation_amount, "ether")
+            print(f"Amount in wei: {amount_in_wei}")
+
+            try:
+                tx_hash = self.uniswap.make_trade(
+                    from_token=self.talent_token_address,
+                    to_token=token_address,
+                    amount=amount_in_wei,
+                    fee=2000,         # e.g., 3000 for a 0.3% Uniswap V3 pool
+                    slippage=0.5,     # non-functional right now. 0.5% slippage tolerance
+                    pool_version="v4"  # can be "v3" or "v4"
+                )
+                print(f"Swap transaction sent! Tx hash: {tx_hash.hex()}")
+            except Exception as e:
+                print(f"Swap failed: {e}")
+
+    def execute_save_strategy_to_api(self, allocations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Save the strategy to the API"""
+        try:
+            url = f"{self.api_base_url}/fund-manager-allocation"
+            headers = {"Content-Type": "application/json", "x-api-key": self.api_key}
+            data = [
+                {
+                    "token_address": allocation["token_address"],
+                    "allocation_percentage": allocation["allocation_percentage"],
+                    "builder_score": allocation["builder_score"],
+                    "deployer_address": allocation["deployer_address"]
+                } for allocation in allocations
+            ]
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+
+            print(f"Strategy saved to API: {response.json()}")
+        except Exception as e:
+            print(f"Error saving strategy to API: {e}")
+
 
 # Create the uAgent
 agent = Agent(
@@ -434,22 +403,6 @@ chat_protocol = Protocol(spec=chat_protocol_spec)
 
 # Initialize the fund agent
 fund_agent = BuilderTokensIndexFundAgent()
-
-print(f"uAgent address: {agent.address}")
-
-@agent.on_event("startup")
-async def on_startup(ctx: Context):
-    """Agent startup event - fetch ETH balance"""
-    wallet_address = "0x81bdC30E4f639BC46963Bb12A1C967dE947ED00f"
-    if w3.is_address(wallet_address):
-        try:
-            balance_wei = w3.eth.get_balance(wallet_address)
-            balance_eth = w3.from_wei(balance_wei, 'ether')
-            ctx.logger.info(f"ETH Balance: {balance_eth} ETH")
-        except Exception as e:
-            ctx.logger.error(f"Error fetching balance: {str(e)}")
-    else:
-        ctx.logger.error("Invalid Ethereum wallet address.")
 
 @agent.on_message(model=FundRequest, replies=FundResponse)
 async def handle_fund_request(ctx: Context, sender: str, msg: FundRequest):
@@ -522,20 +475,9 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
             # Create a default fund request
             fund_request = FundRequest()
             fund_response = fund_agent.create_index_fund(fund_request)
-            
-            # Format the response
-            response_text = json.dumps({
-                "fund_id": fund_response.fund_id,
-                "total_tokens": fund_response.total_tokens,
-                "total_allocation": fund_response.total_allocation,
-                "average_builder_score": fund_response.average_builder_score,
-                "allocations": fund_response.allocations,
-                "risk_metrics": fund_response.risk_metrics,
-                "generated_at": fund_response.generated_at
-            }, indent=2)
 
             # Format the response
-            response_text += f"\n\n\n\n🎯 **Builder Tokens Index Fund Created!**\n\n"
+            response_text = f"\n\n\n\n🎯 **Builder Tokens Index Fund Created!**\n\n"
             response_text += f"📊 **Fund Summary:**\n"
             response_text += f"• Total Tokens: {fund_response.total_tokens}\n"
             response_text += f"• Total Allocation: {fund_response.total_allocation}%\n"
@@ -550,17 +492,17 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
             response_text += f"• Diversification Score: {fund_response.risk_metrics.get('diversification_score', 0)}\n"
             response_text += f"• Quality Score: {fund_response.risk_metrics.get('quality_score', 0)}\n"
             
-            response_text += f"\n💡 **How it works:** This fund selects the top 50 Builder Tokens based on Talent Protocol Builder Scores, profile quality, skills diversity, and experience. Each allocation is optimized for maximum diversification while maintaining quality standards."
+            response_text += f"\n💡 **How it works:** This fund selects Builder Tokens from real deployment data on Base network, using authentic Talent Protocol Builder Scores. Allocations are calculated based purely on official Builder Scores from the Talent Protocol API."
             
         elif "help" in text.lower() or "what can you do" in text.lower():
             response_text = """🤖 **Builder Tokens Index Fund Agent**
 
-                                I'm an AI agent that creates optimized index funds of Builder Tokens based on Talent Protocol data.
+                                I'm an AI agent that creates index funds of Builder Tokens using real deployment data from Base network and authentic Talent Protocol Builder Scores.
 
                                 **What I can do:**
-                                • Create index funds with 50 Builder Tokens
-                                • Analyze Builder Scores and profile quality
-                                • Calculate optimal allocation weights
+                                • Create index funds with up to 50 Builder Tokens
+                                • Fetch real Talent Protocol profiles and official Builder Scores
+                                • Calculate allocation weights based on Builder Scores
                                 • Provide risk metrics and diversification analysis
 
                                 **Commands:**
@@ -569,23 +511,27 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
                                 • "Show allocations" - Display current fund allocations
 
                                 **How it works:**
-                                I use simulated Talent Protocol profiles with Builder Scores to select the most promising builders. The selection process considers:
-                                - Builder Score (40% weight)
-                                - Profile Quality (25% weight)  
-                                - Skills Diversity (20% weight)
-                                - Experience (15% weight)
+                                1. I fetch real token deployment data from the builder-coins API
+                                2. For each token deployer, I query the Talent Protocol API to get their profile
+                                3. I fetch official Builder Scores from the Talent Protocol score endpoint
+                                4. I calculate allocations based purely on the Builder Scores using softmax distribution
+                                5. I apply allocation constraints (0.5% - 5% per token)
 
-                                Each fund is optimized for diversification with allocation constraints (0.5% - 5% per token)
+                                The fund is optimized for diversification while maintaining quality standards based on Builder Scores.
                             """
             
         elif "show allocations" in text.lower() or "current fund" in text.lower():
             if fund_agent.fund_allocations:
                 response_text = f"📊 **Current Fund Allocations:**\n\n"
                 for i, allocation in enumerate(fund_agent.fund_allocations[:10], 1):
-                    response_text += f"{i}. {allocation['builder_name']} ({allocation['token_symbol']}): {allocation['allocation_percentage']}% (Score: {allocation['builder_score']:.1f})\n"
-                response_text += f"\n... and {len(fund_agent.fund_allocations) - 10} more tokens"
+                    response_text += f"{i}. {allocation['builder_name']} ({allocation['token_symbol']}): {allocation['allocation_percentage']}% (Builder Score: {allocation['builder_score']:.1f})\n"
+                if len(fund_agent.fund_allocations) > 10:
+                    response_text += f"\n... and {len(fund_agent.fund_allocations) - 10} more tokens"
             else:
                 response_text = "No fund has been created yet. Use 'Create fund' to generate a new index fund."
+
+        else:
+            response_text = "I'm the Builder Tokens Index Fund Agent! I can help you create optimized index funds of Builder Tokens. Try saying 'Create fund' or 'Help' to get started."
         
     except Exception as e:
         ctx.logger.error(f"Error processing chat message: {str(e)}")

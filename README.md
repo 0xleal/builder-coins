@@ -6,6 +6,12 @@ A decentralized index fund that invests in the most promising builders in the We
 
 Builders Fund is a permissionless index fund that supports builders in the Web3 ecosystem through a tokenized investment strategy. The fund's value is represented by a token that provides diversified exposure to builder tokens selected by AI agents.
 
+## 🧠 AI Agent Details
+
+The AI agent is built with uAgents by Agentverse, Langchain and uses OpenAI LLMs.
+Agent name: Builder Coins Agent
+Agent Address: agent://agent1qfve7skhnhmpwg9ff97nrc0uggwstpzlz7uj9awvunrkql6pj02dqw7edtx
+
 ### Key Features
 
 - **Permissionless Builder Economy**: Any builder can launch their personal token with minimum liquidity requirements
