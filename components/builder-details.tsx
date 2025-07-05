@@ -95,17 +95,13 @@ export default function BuilderDetails({
       chain: addEnsContracts(mainnet),
       transport: custom(provider),
     });
-
-    console.log(wallet.address);
-    console.log(builder.tokenAddress);
-    console.log(wallet.chainId);
     const hash = await setRecords(walletClient, {
       name: ensName as string,
       account: wallet.address as `0x${string}`,
       texts: [
         {
           key: "BuilderCoin",
-          value: `https://basescan.org/token/${builder.tokenAddress}`,
+          value: `https://builder-coins.vercel.app/builder/${builder.tokenAddress}`,
         },
       ],
       resolverAddress: "0x231b0Ee14048e9dCcD1d247744d114a4EB5E8E63",
@@ -387,7 +383,7 @@ export default function BuilderDetails({
             </Card>
 
             {/* Token Metrics */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-sm mb-8">
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-white">Token Metrics</CardTitle>
               </CardHeader>
@@ -440,6 +436,15 @@ export default function BuilderDetails({
                       ></div>
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Chart */}
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm mb-8">
+              <CardContent>
+                <div id="dexscreener-embed">
+                  <iframe src="https://dexscreener.com/base/0x06ba5105a1046f706f705b8837a777cfc5843e7141244390c5bea5d1d990593e?embed=1&loadChartSettings=0&trades=0&tabs=0&info=0&chartLeftToolbar=0&chartDefaultOnMobile=1&chartTheme=dark&theme=dark&chartStyle=0&chartType=usd&interval=15"></iframe>
                 </div>
               </CardContent>
             </Card>
