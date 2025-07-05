@@ -48,10 +48,10 @@ export default function BuilderPage() {
         tokenTicker,
         description
       );
-      handleRecordDeployment();
       setIsSuccess(true);
       setTokenAddress(address);
       setTxHash(txHash);
+      handleRecordDeployment(txHash);
     } catch (error) {
       console.error(error);
     }
@@ -59,7 +59,7 @@ export default function BuilderPage() {
     setIsSubmitting(false);
   };
 
-  const handleRecordDeployment = async () => {
+  const handleRecordDeployment = async (txHash: `0x${string}` | undefined) => {
     if (!txHash) return;
 
     try {
