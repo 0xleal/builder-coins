@@ -26,17 +26,13 @@ import {
 import { useClanker } from "@/hooks/useClanker";
 
 export default function BuilderPage() {
-  const [tokenName, setTokenName] = useState("BuilderCoin Leal");
-  const [tokenTicker, setTokenTicker] = useState("LEAL");
+  const [tokenName, setTokenName] = useState("");
+  const [tokenTicker, setTokenTicker] = useState("");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(true);
-  const [tokenAddress, setTokenAddress] = useState<`0x${string}` | undefined>(
-    "0x869A5b968155a2137C1a6Fd277ebAf47384134E1"
-  );
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(
-    "0xcd05776c4ef6874b9fef1438d116533083eab1a021f059d1d1af180c06ba8bdd"
-  );
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [tokenAddress, setTokenAddress] = useState<`0x${string}` | undefined>();
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
   const { handleDeploy } = useClanker();
 
   const handleSubmit = async (e: React.FormEvent) => {
