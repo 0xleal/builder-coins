@@ -372,7 +372,8 @@ class BuilderTokensIndexFundAgent:
                 {
                     "token_address": allocation["token_address"],
                     "allocation_percentage": allocation["allocation_percentage"],
-                    "builder_score": allocation["builder_score"]
+                    "builder_score": allocation["builder_score"],
+                    "deployer_address": allocation["deployer_address"]
                 } for allocation in allocations
             ]
             response = requests.post(url, headers=headers, json=data)
