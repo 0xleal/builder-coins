@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -22,25 +21,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { TrendingUp, Users, DollarSign, ExternalLink } from "lucide-react";
+import { FUND_MANAGER_ADDRESS, TALENT_TOKEN } from "@/lib/constants";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import {
-  TrendingUp,
-  Users,
-  DollarSign,
-  Activity,
-  ExternalLink,
-} from "lucide-react";
-
-// Mock data
-const fundMetrics = {
-  totalValue: "$2,450,000",
-  tokenPrice: "$24.50",
-  totalSupply: "100,000 BF",
-  holders: "1,247",
-  performance24h: "+5.2%",
-  performance7d: "+12.8%",
-  performance30d: "+34.5%",
-  aum: "$2.45M",
-};
+  createPublicClient,
+  http,
+  erc20Abi,
+  parseEther,
+  formatUnits,
+} from "viem";
+import { base } from "viem/chains";
+import { FundManagerPortfolio } from "@/lib/types";
 
 const builders = [
   {
@@ -98,9 +91,67 @@ const builders = [
 ];
 
 export default function FundPage() {
-  const [buyAmount, setBuyAmount] = useState("");
-  const [sellAmount, setSellAmount] = useState("");
-  // const [selectedBuilder, setSelectedBuilder] = useState(null)
+  const [depositAmount, setDepositAmount] = useState("");
+  const { ready, authenticated } = usePrivy();
+  const account = useAccount();
+  const wallets = useWallets();
+  const { writeContractAsync } = useWriteContract();
+  const { data: balance } = useReadContract({
+    abi: erc20Abi,
+    chainId: base.id,
+    address: TALENT_TOKEN.address as `0x${string}`,
+    functionName: "balanceOf",
+    args: [account.address as `0x${string}`],
+  });
+  const [fundManagerPortfolio, setFundManagerPortfolio] =
+    useState<FundManagerPortfolio | null>(null);
+
+  useEffect(() => {
+    const fetchFundManagerPortfolio = async () => {
+      const response = await fetch("/api/fund-manager-portfolio");
+      const data = await response.json();
+      setFundManagerPortfolio(data);
+    };
+
+    fetchFundManagerPortfolio();
+  }, []);
+
+  const client = createPublicClient({ chain: base, transport: http() });
+
+  const depositLiquidity = async () => {
+    if (!ready || !authenticated || !account) return;
+
+    if (balance && parseEther(depositAmount) > balance) {
+      console.log("Insufficient balance");
+      return;
+    }
+
+    const wallet = wallets.wallets.find(
+      (w) => w.address.toLowerCase() === account.address?.toLowerCase()
+    );
+
+    if (!wallet) {
+      console.log("Wallet not found");
+      return;
+    }
+
+    await wallet.switchChain(base.id);
+
+    const tx = await writeContractAsync({
+      address: TALENT_TOKEN.address as `0x${string}`,
+      abi: erc20Abi,
+      chainId: base.id,
+      functionName: "transfer",
+      args: [FUND_MANAGER_ADDRESS, parseEther(depositAmount)],
+      account: account.address as `0x${string}`,
+    });
+
+    await client.waitForTransactionReceipt({
+      hash: tx,
+    });
+
+    setDepositAmount("");
+  };
 
   return (
     <>
@@ -116,14 +167,14 @@ export default function FundPage() {
         </div>
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-white/60 text-sm">Total Value</p>
                   <p className="text-white text-xl font-bold">
-                    {fundMetrics.totalValue}
+                    ${fundManagerPortfolio?.value || 0}
                   </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-green-400" />
@@ -135,12 +186,12 @@ export default function FundPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-white/60 text-sm">Token Price</p>
+                  <p className="text-white/60 text-sm">Liquidity Available</p>
                   <p className="text-white text-xl font-bold">
-                    {fundMetrics.tokenPrice}
+                    ${fundManagerPortfolio?.liquidity_available || 0}
                   </p>
                 </div>
-                <Activity className="h-8 w-8 text-purple-400" />
+                <TrendingUp className="h-8 w-8 text-purple-400" />
               </div>
             </CardContent>
           </Card>
@@ -149,26 +200,12 @@ export default function FundPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-white/60 text-sm">24h Change</p>
+                  <p className="text-white/60 text-sm">Builder Coins Held</p>
                   <p className="text-green-400 text-xl font-bold">
-                    {fundMetrics.performance24h}
+                    {fundManagerPortfolio?.builder_coins_held || 0}
                   </p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white/60 text-sm">Holders</p>
-                  <p className="text-white text-xl font-bold">
-                    {fundMetrics.holders}
-                  </p>
-                </div>
-                <Users className="h-8 w-8 text-blue-400" />
+                <Users className="h-8 w-8 text-green-400" />
               </div>
             </CardContent>
           </Card>
@@ -179,111 +216,41 @@ export default function FundPage() {
           <div className="lg:col-span-1">
             <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-white">Trade Fund Token</CardTitle>
+                <CardTitle className="text-white">Provide Liquidity</CardTitle>
                 <CardDescription className="text-white/70">
-                  Buy or sell Builders Fund tokens
+                  Provide liquidity to the fund. Fees and rewards will be
+                  distributed over time to liquidity providers
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="buy" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-white/10">
-                    <TabsTrigger
-                      value="buy"
-                      className="text-white data-[state=active]:bg-green-600"
-                    >
-                      Buy
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="sell"
-                      className="text-white data-[state=active]:bg-red-600"
-                    >
-                      Sell
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="buy" className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="buy-amount" className="text-white">
-                        Amount (ETH)
-                      </Label>
-                      <Input
-                        id="buy-amount"
-                        placeholder="0.0"
-                        value={buyAmount}
-                        onChange={(e) => setBuyAmount(e.target.value)}
-                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                      />
-                      <p className="text-white/60 text-sm">
-                        ≈{" "}
-                        {buyAmount
-                          ? (
-                              (Number.parseFloat(buyAmount) / 24.5) *
-                              1000
-                            ).toFixed(2)
-                          : "0"}{" "}
-                        BF tokens
-                      </p>
-                    </div>
-                    <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
-                      Buy Fund Tokens
-                    </Button>
-                  </TabsContent>
-
-                  <TabsContent value="sell" className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="sell-amount" className="text-white">
-                        Amount (BF)
-                      </Label>
-                      <Input
-                        id="sell-amount"
-                        placeholder="0.0"
-                        value={sellAmount}
-                        onChange={(e) => setSellAmount(e.target.value)}
-                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                      />
-                      <p className="text-white/60 text-sm">
-                        ≈{" "}
-                        {sellAmount
-                          ? (
-                              (Number.parseFloat(sellAmount) * 24.5) /
-                              1000
-                            ).toFixed(4)
-                          : "0"}{" "}
-                        ETH
-                      </p>
-                    </div>
-                    <Button className="w-full bg-red-600 hover:bg-red-700 text-white">
-                      Sell Fund Tokens
-                    </Button>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-
-            {/* Performance Card */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-sm mt-6">
-              <CardHeader>
-                <CardTitle className="text-white">Performance</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">24h</span>
-                  <span className="text-green-400 font-semibold">
-                    {fundMetrics.performance24h}
-                  </span>
+                <div className="space-y-2">
+                  <Label htmlFor="buy-amount" className="text-white">
+                    Deposit
+                  </Label>
+                  <p className="text-white/60 text-sm">
+                    $TALENT: {balance ? formatUnits(balance, 18) : "0"}
+                  </p>
+                  <Input
+                    id="buy-amount"
+                    placeholder="0.0"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                  />
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">7d</span>
-                  <span className="text-green-400 font-semibold">
-                    {fundMetrics.performance7d}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">30d</span>
-                  <span className="text-green-400 font-semibold">
-                    {fundMetrics.performance30d}
-                  </span>
-                </div>
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white mt-3"
+                  onClick={depositLiquidity}
+                  disabled={
+                    !ready ||
+                    !authenticated ||
+                    !account ||
+                    !balance ||
+                    !depositAmount
+                  }
+                >
+                  Provide Liquidity
+                </Button>
               </CardContent>
             </Card>
           </div>

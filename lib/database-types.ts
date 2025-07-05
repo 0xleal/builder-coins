@@ -9,6 +9,24 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      fund_strategies: {
+        Row: {
+          created_at: string;
+          id: number;
+          strategy: Json;
+        };
+        Insert: {
+          created_at?: string;
+          id?: number;
+          strategy: Json;
+        };
+        Update: {
+          created_at?: string;
+          id?: number;
+          strategy?: Json;
+        };
+        Relationships: [];
+      };
       token_deployments: {
         Row: {
           admin_address: string;
