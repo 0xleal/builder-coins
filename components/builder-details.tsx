@@ -10,17 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   ArrowUpDown,
   Copy,
@@ -33,45 +25,16 @@ import { Builder } from "@/lib/types";
 import { useEnsAvatar, useEnsName, useEnsText } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import Image from "next/image";
-
-// Available tokens for swapping
-const availableTokens = [
-  {
-    symbol: "ETH",
-    name: "Ethereum",
-    address: "0x0000000000000000000000000000000000000000",
-    price: 2340.5,
-  },
-  {
-    symbol: "USDC",
-    name: "USD Coin",
-    address: "0xA0b86a33E6441b8b4C9db4C4b8b4b8b4b8b4b8b4",
-    price: 1.0,
-  },
-  {
-    symbol: "USDT",
-    name: "Tether",
-    address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-    price: 1.0,
-  },
-  {
-    symbol: "WETH",
-    name: "Wrapped Ethereum",
-    address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-    price: 2340.5,
-  },
-];
+import { TALENT_TOKEN } from "@/lib/constants";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export default function BuilderDetails({
   builder,
 }: {
   builder: Builder | null;
 }) {
-  const [swapFromAmount, setSwapFromAmount] = useState("");
-  const [swapToAmount, setSwapToAmount] = useState("");
-  const [swapFromToken, setSwapFromToken] = useState("ETH");
-  const [swapToToken, setSwapToToken] = useState("");
   const [copied, setCopied] = useState("");
+  const [tradeModalOpen, setTradeModalOpen] = useState(false);
 
   const { data: ensName } = useEnsName({
     address: builder?.deployerAddress as `0x${string}`,
@@ -114,11 +77,6 @@ export default function BuilderDetails({
     );
   }
 
-  // Set default swap to token as builder's token
-  if (!swapToToken) {
-    setSwapToToken(builder.tokenSymbol);
-  }
-
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
     setCopied(type);
@@ -138,45 +96,10 @@ export default function BuilderDetails({
     return `$${num.toFixed(2)}`;
   };
 
-  const calculateSwapAmount = (
-    fromAmount: string,
-    fromToken: string,
-    toToken: string
-  ) => {
-    if (!fromAmount || !fromToken || !toToken) return "0";
-
-    const fromPrice =
-      fromToken === builder.tokenSymbol
-        ? builder.currentPrice
-        : availableTokens.find((t) => t.symbol === fromToken)?.price || 0;
-    const toPrice =
-      toToken === builder.tokenSymbol
-        ? builder.currentPrice
-        : availableTokens.find((t) => t.symbol === toToken)?.price || 0;
-
-    if (fromPrice === 0 || toPrice === 0) return "0";
-
-    const result = (Number.parseFloat(fromAmount) * fromPrice) / toPrice;
-    return result.toFixed(6);
-  };
-
-  const handleSwapFromChange = (value: string) => {
-    setSwapFromAmount(value);
-    setSwapToAmount(calculateSwapAmount(value, swapFromToken, swapToToken));
-  };
-
-  const handleSwapToChange = (value: string) => {
-    setSwapToAmount(value);
-    setSwapFromAmount(calculateSwapAmount(value, swapToToken, swapFromToken));
-  };
-
-  const swapTokens = () => {
-    const tempToken = swapFromToken;
-    const tempAmount = swapFromAmount;
-    setSwapFromToken(swapToToken);
-    setSwapToToken(tempToken);
-    setSwapFromAmount(swapToAmount);
-    setSwapToAmount(tempAmount);
+  const calculateTokenAddress = (token: string) => {
+    if (token === "ETH") return "0x0000000000000000000000000000000000000000";
+    if (token === "TALENT") return TALENT_TOKEN.address;
+    return builder.tokenAddress;
   };
 
   return (
@@ -208,7 +131,9 @@ export default function BuilderDetails({
               <h1 className="text-3xl font-bold text-white">
                 {ensName || builder.profileName}
               </h1>
-              <CheckCircle className="h-6 w-6 text-blue-400" />
+              {builder.fundStatus.inFund && (
+                <CheckCircle className="h-6 w-6 text-blue-400" />
+              )}
               <Badge variant="secondary" className="bg-white/10 text-white/80">
                 ${builder.tokenSymbol}
               </Badge>
@@ -310,32 +235,6 @@ export default function BuilderDetails({
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Fund Status */}
-            {builder.fundStatus.inFund && (
-              <Card className="bg-green-500/10 border-green-500/20 backdrop-blur-sm">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-green-400 font-semibold mb-1">
-                        ✅ Included in BuildersFund
-                      </h3>
-                      <p className="text-white/70">
-                        This builder is currently part of the fund portfolio
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white font-semibold">
-                        {builder.fundStatus.allocation}% allocation
-                      </p>
-                      <p className="text-green-400 text-sm">
-                        +{builder.fundStatus.currentReturn}% return
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Token Contract Information */}
             <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
@@ -515,121 +414,31 @@ export default function BuilderDetails({
               <CardHeader>
                 <CardTitle className="text-white flex items-center">
                   <ArrowUpDown className="mr-2 h-5 w-5" />
-                  Token Swap
+                  Buy and sell ${builder.tokenSymbol}
                 </CardTitle>
                 <CardDescription className="text-white/70">
-                  Swap tokens with ${builder.tokenSymbol}
+                  Participate in ${builder.tokenSymbol} economy
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* From Token */}
-                <div className="space-y-2">
-                  <Label className="text-white text-sm">From</Label>
-                  <div className="flex space-x-2">
-                    <Select
-                      value={swapFromToken}
-                      onValueChange={setSwapFromToken}
-                    >
-                      <SelectTrigger className="w-24 bg-white/10 border-white/20 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-white/20">
-                        {availableTokens.map((token) => (
-                          <SelectItem
-                            key={token.symbol}
-                            value={token.symbol}
-                            className="text-white"
-                          >
-                            {token.symbol}
-                          </SelectItem>
-                        ))}
-                        <SelectItem
-                          value={builder.tokenSymbol}
-                          className="text-white"
-                        >
-                          {builder.tokenSymbol}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder="0.0"
-                      value={swapFromAmount}
-                      onChange={(e) => handleSwapFromChange(e.target.value)}
-                      className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                    />
-                  </div>
-                </div>
-
-                {/* Swap Button */}
-                <div className="flex justify-center">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={swapTokens}
-                    className="h-8 w-8 p-0 text-white/60 hover:text-white hover:bg-white/10 rounded-full"
-                  >
-                    <ArrowUpDown className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* To Token */}
-                <div className="space-y-2">
-                  <Label className="text-white text-sm">To</Label>
-                  <div className="flex space-x-2">
-                    <Select value={swapToToken} onValueChange={setSwapToToken}>
-                      <SelectTrigger className="w-24 bg-white/10 border-white/20 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-white/20">
-                        {availableTokens.map((token) => (
-                          <SelectItem
-                            key={token.symbol}
-                            value={token.symbol}
-                            className="text-white"
-                          >
-                            {token.symbol}
-                          </SelectItem>
-                        ))}
-                        <SelectItem
-                          value={builder.tokenSymbol}
-                          className="text-white"
-                        >
-                          {builder.tokenSymbol}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder="0.0"
-                      value={swapToAmount}
-                      onChange={(e) => handleSwapToChange(e.target.value)}
-                      className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                    />
-                  </div>
-                </div>
-
-                {/* Swap Info */}
-                {swapFromAmount && swapToAmount && (
-                  <div className="bg-white/5 rounded-lg p-3 space-y-2 text-sm">
-                    <div className="flex justify-between text-white/70">
-                      <span>Exchange Rate</span>
-                      <span>
-                        1 {swapFromToken} ={" "}
-                        {calculateSwapAmount("1", swapFromToken, swapToToken)}{" "}
-                        {swapToToken}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-white/70">
-                      <span>Slippage</span>
-                      <span>0.5%</span>
-                    </div>
-                  </div>
-                )}
-
-                <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">
+                <Button
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                  onClick={() => setTradeModalOpen(true)}
+                >
                   Swap Tokens
                 </Button>
               </CardContent>
             </Card>
+            <Dialog open={tradeModalOpen} onOpenChange={setTradeModalOpen}>
+              <DialogContent className="bg-slate-900 border-white/10 text-white max-w-2xl max-h-[80vh] min-h-[60vh] overflow-y-auto">
+                <iframe
+                  src={`https://app.uniswap.org/swap?inputCurrency=${calculateTokenAddress(
+                    "TALENT"
+                  )}&outputCurrency=${builder.tokenAddress}&chain=base`}
+                  className="w-full h-full"
+                ></iframe>
+              </DialogContent>
+            </Dialog>
 
             {/* Token Metadata */}
             <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
@@ -656,12 +465,6 @@ export default function BuilderDetails({
                   <span className="text-white/70">Total Supply</span>
                   <span className="text-white">
                     {(builder.totalSupply / 1000000).toFixed(1)}M
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">Deploy Block</span>
-                  <span className="text-white">
-                    #{builder.blockNumber.toLocaleString()}
                   </span>
                 </div>
               </CardContent>
