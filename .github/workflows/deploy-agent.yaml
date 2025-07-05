@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      env:
+        AGENTVERSE_API_KEY: ${{ secrets.AGENTVERSE_API_KEY }}
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -29,18 +31,7 @@ jobs:
           mv avctl /usr/local/bin/avctl
 
       - name: Authenticate with Agentverse
-        run: |
-          # Try multiple authentication methods
-          if printf "${{ secrets.AGENTVERSE_API_KEY }}" | avctl auth token; then
-            echo "✓ Authentication successful with stdin"
-          elif avctl auth token ${{ secrets.AGENTVERSE_API_KEY }}; then
-            echo "✓ Authentication successful with positional argument"
-          elif AGENTVERSE_API_KEY="${{ secrets.AGENTVERSE_API_KEY }}" avctl auth token; then
-            echo "✓ Authentication successful with environment variable"
-          else
-            echo "✗ All authentication methods failed"
-            exit 1
-          fi
+        run: avctl auth token $AGENTVERSE_API_KEY
 
       - name: Deploy all agents
         run: ./scripts/deploy-agent.sh
