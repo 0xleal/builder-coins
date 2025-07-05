@@ -53,3 +53,20 @@ export type DexscreenerResponse = {
     priceNative: number;
   };
 };
+
+export type FundManagerPortfolio = {
+  wallet_address: string;
+  balances: {
+    value_usd: number;
+    chain: string;
+    chain_id: number;
+    address: string;
+    amount: string;
+    symbol: string;
+    decimals: number;
+    price_usd: number;
+  }[];
+  value: number;
+  liquidity_available: number;
+  builder_coins_held: number;
+};

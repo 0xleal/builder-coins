@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,13 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  TrendingUp,
-  Users,
-  DollarSign,
-  Activity,
-  ExternalLink,
-} from "lucide-react";
+import { TrendingUp, Users, DollarSign, ExternalLink } from "lucide-react";
 import { FUND_MANAGER_ADDRESS, TALENT_TOKEN } from "@/lib/constants";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
@@ -39,18 +33,7 @@ import {
   formatUnits,
 } from "viem";
 import { base } from "viem/chains";
-
-// Mock data
-const fundMetrics = {
-  totalValue: "$2,450,000",
-  tokenPrice: "$24.50",
-  totalSupply: "100,000 BF",
-  holders: "1,247",
-  performance24h: "+5.2%",
-  performance7d: "+12.8%",
-  performance30d: "+34.5%",
-  aum: "$2.45M",
-};
+import { FundManagerPortfolio } from "@/lib/types";
 
 const builders = [
   {
@@ -120,6 +103,18 @@ export default function FundPage() {
     functionName: "balanceOf",
     args: [account.address as `0x${string}`],
   });
+  const [fundManagerPortfolio, setFundManagerPortfolio] =
+    useState<FundManagerPortfolio | null>(null);
+
+  useEffect(() => {
+    const fetchFundManagerPortfolio = async () => {
+      const response = await fetch("/api/fund-manager-portfolio");
+      const data = await response.json();
+      setFundManagerPortfolio(data);
+    };
+
+    fetchFundManagerPortfolio();
+  }, []);
 
   const client = createPublicClient({ chain: base, transport: http() });
 
@@ -142,9 +137,6 @@ export default function FundPage() {
 
     await wallet.switchChain(base.id);
 
-    console.log(depositAmount);
-    console.log(parseEther(depositAmount));
-
     const tx = await writeContractAsync({
       address: TALENT_TOKEN.address as `0x${string}`,
       abi: erc20Abi,
@@ -154,13 +146,10 @@ export default function FundPage() {
       account: account.address as `0x${string}`,
     });
 
-    console.log(tx);
-
     await client.waitForTransactionReceipt({
       hash: tx,
     });
 
-    console.log("Successfully deposited liquidity");
     setDepositAmount("");
   };
 
@@ -178,14 +167,14 @@ export default function FundPage() {
         </div>
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-white/60 text-sm">Total Value</p>
                   <p className="text-white text-xl font-bold">
-                    {fundMetrics.totalValue}
+                    ${fundManagerPortfolio?.value || 0}
                   </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-green-400" />
@@ -197,12 +186,12 @@ export default function FundPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-white/60 text-sm">Token Price</p>
+                  <p className="text-white/60 text-sm">Liquidity Available</p>
                   <p className="text-white text-xl font-bold">
-                    {fundMetrics.tokenPrice}
+                    ${fundManagerPortfolio?.liquidity_available || 0}
                   </p>
                 </div>
-                <Activity className="h-8 w-8 text-purple-400" />
+                <TrendingUp className="h-8 w-8 text-purple-400" />
               </div>
             </CardContent>
           </Card>
@@ -211,26 +200,12 @@ export default function FundPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-white/60 text-sm">24h Change</p>
+                  <p className="text-white/60 text-sm">Builder Coins Held</p>
                   <p className="text-green-400 text-xl font-bold">
-                    {fundMetrics.performance24h}
+                    {fundManagerPortfolio?.builder_coins_held || 0}
                   </p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white/60 text-sm">Holders</p>
-                  <p className="text-white text-xl font-bold">
-                    {fundMetrics.holders}
-                  </p>
-                </div>
-                <Users className="h-8 w-8 text-blue-400" />
+                <Users className="h-8 w-8 text-green-400" />
               </div>
             </CardContent>
           </Card>
