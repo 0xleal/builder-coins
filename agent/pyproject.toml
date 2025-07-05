@@ -18,6 +18,10 @@ pandas = "^2.1.0"
 numpy = "^1.24.0"
 python-dotenv = "^1.0.0"
 requests = "^2.31.0"
+eth-account = "^0.13.7"
+eth-abi = "^5.2.0"
+uniswap-universal-router-decoder = "^2.0.0"
+setuptools = "^68.0.0"
 
 
 [build-system]

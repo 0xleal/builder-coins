@@ -17,12 +17,10 @@ from web3 import Web3
 import os
 import requests
 from dotenv import load_dotenv
+from uniswap_universal_router import Uniswap
+from uniswap_universal_router import ERC20_ABI
 
 load_dotenv()
-
-# Web3 setup for Base network
-WEB3_PROVIDER_URL = "https://sepolia.base.org"
-w3 = Web3(Web3.HTTPProvider(WEB3_PROVIDER_URL))
 
 @dataclass
 class TalentProfile:
@@ -71,6 +69,17 @@ class BuilderTokensIndexFundAgent:
         self.talent_api_key = os.environ.get('TALENT_API_KEY')
         self.talent_profiles = []
         self.fund_allocations = []
+        self.talent_token_address = "0x9a33406165f562E16C3abD82fd1185482E01b49a"
+        self.wallet_address = os.environ.get('WALLET_ADDRESS')
+        self.private_key = os.environ.get('PRIVATE_KEY')
+        self.provider = os.environ.get('WEB3_PROVIDER_URL')
+        self.web3 = Web3(Web3.HTTPProvider(self.provider))
+        self.uniswap = Uniswap(
+            wallet_address=self.wallet_address,
+            private_key=self.private_key,
+            provider=self.provider,
+            web3=self.web3
+        )
         
     def _fetch_token_deployments(self, page: int = 1, limit: int = 100) -> List[Dict[str, Any]]:
         """Fetch token deployments from the API"""
@@ -295,6 +304,9 @@ class BuilderTokensIndexFundAgent:
         
         # Store allocations
         self.fund_allocations = allocations
+
+        # Execute fund purchases
+        self.execute_fund_purchases(allocations)
         
         return FundResponse(
             fund_id=fund_id,
@@ -305,6 +317,45 @@ class BuilderTokensIndexFundAgent:
             risk_metrics=risk_metrics,
             generated_at=datetime.now().isoformat()
         )
+
+    def execute_fund_purchases(self, allocations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Execute token purchases using Uniswap V4"""
+        if not self.uniswap:
+            raise Exception("Uniswap not initialized")
+            
+        # Get the agent's wallet address
+        wallet_address = self.uniswap.wallet_address
+        print(f"Wallet address: {wallet_address}")
+
+        # Get the agent's balance for $TALENT token
+        token = self.uniswap.w3.eth.contract(address=self.talent_token_address, abi=ERC20_ABI)
+        balance = token.functions.balanceOf(wallet_address).call()
+        print(f"Balance: {balance}")
+
+        for allocation in allocations:
+            token_address = allocation["token_address"]
+            
+            allocation_amount = allocation["allocation_percentage"] * balance / 100
+            print(f"Allocation amount: {allocation_amount}")
+
+            # Round down to 6 decimal places
+            rounded_allocation_amount = int(allocation_amount * 10**6) / 10**6
+
+            amount_in_wei = self.web3.to_wei(rounded_allocation_amount, "ether")
+            print(f"Amount in wei: {amount_in_wei}")
+
+            try:
+                tx_hash = self.uniswap.make_trade(
+                    from_token=self.talent_token_address,
+                    to_token=token_address,
+                    amount=amount_in_wei,
+                    fee=2000,         # e.g., 3000 for a 0.3% Uniswap V3 pool
+                    slippage=0.5,     # non-functional right now. 0.5% slippage tolerance
+                    pool_version="v4"  # can be "v3" or "v4"
+                )
+                print(f"Swap transaction sent! Tx hash: {tx_hash.hex()}")
+            except Exception as e:
+                print(f"Swap failed: {e}")
 
 # Create the uAgent
 agent = Agent(
@@ -325,22 +376,6 @@ chat_protocol = Protocol(spec=chat_protocol_spec)
 
 # Initialize the fund agent
 fund_agent = BuilderTokensIndexFundAgent()
-
-print(f"uAgent address: {agent.address}")
-
-@agent.on_event("startup")
-async def on_startup(ctx: Context):
-    """Agent startup event - fetch ETH balance"""
-    wallet_address = "0x81bdC30E4f639BC46963Bb12A1C967dE947ED00f"
-    if w3.is_address(wallet_address):
-        try:
-            balance_wei = w3.eth.get_balance(wallet_address)
-            balance_eth = w3.from_wei(balance_wei, 'ether')
-            ctx.logger.info(f"ETH Balance: {balance_eth} ETH")
-        except Exception as e:
-            ctx.logger.error(f"Error fetching balance: {str(e)}")
-    else:
-        ctx.logger.error("Invalid Ethereum wallet address.")
 
 @agent.on_message(model=FundRequest, replies=FundResponse)
 async def handle_fund_request(ctx: Context, sender: str, msg: FundRequest):
