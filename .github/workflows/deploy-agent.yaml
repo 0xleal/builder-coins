@@ -1,0 +1,35 @@
+name: Deploy Agents to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download latest AVCTL release binary
+        run: |
+          LATEST_RELEASE_URL=$(curl -s https://api.github.com/repos/fetchai/avctl/releases/latest \
+          | grep browser_download_url \
+          | grep avctl_Linux_x86_64.tar.gz \
+          | cut -d '"' -f 4)
+
+          curl -L -o avctl_Linux_x86_64.tar.gz $LATEST_RELEASE_URL
+
+      - name: Extract binary and install
+        run: |
+          tar -xvf avctl_Linux_x86_64.tar.gz
+          chmod +x avctl
+          mv avctl /usr/local/bin/avctl
+
+      - name: Authenticate with Agentverse
+        run: avctl auth token ${{ secrets.AGENTVERSE_API_KEY }}
+
+      - name: Deploy all agents
+        run: ./scripts/deploy-agent.sh
