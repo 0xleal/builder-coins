@@ -23,50 +23,44 @@
 
 ### 1.3 Token Launch Validation & Security
 
-- [ ] Implement client-side validation for token parameters
-- [ ] Add rate limiting for token creation to prevent spam
-- [ ] Implement wallet connection validation
-- [ ] Add transaction confirmation dialogs
-- [ ] Create transaction receipt storage for audit trail
+- [x] Implement client-side validation for token parameters
+- [x] Add rate limiting for token creation to prevent spam
+- [x] Implement wallet connection validation
+- [x] Add transaction confirmation dialogs
+- [x] Create transaction receipt storage for audit trail
 
 ## Phase 2: Supabase Integration for Deploy Tracking
 
 ### 2.1 Supabase Project Setup
 
-- [ ] Set up Supabase project and configure environment
-- [ ] Create database schema for token deployments
-- [ ] Set up authentication and authorization rules
-- [ ] Configure real-time subscriptions for live updates
+- [x] Set up Supabase project and configure environment
+- [x] Create database schema for token deployments
 
 ### 2.2 Database Schema Design
 
-```sql
+````sql
 -- Token deployments table
 CREATE TABLE token_deployments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   token_address TEXT NOT NULL,
+  admin_address TEXT NOT NULL,
   token_name TEXT NOT NULL,
   token_symbol TEXT NOT NULL,
   deployer_address TEXT NOT NULL,
-  network TEXT NOT NULL DEFAULT 'base-sepolia',
-  initial_supply NUMERIC NOT NULL,
-  tokenomics_config JSONB,
+  pool_id TEXT NOT NULL,
+  paired_token TEXT NOT NULL,
+  locker TEXT NOT NULL,
+  mev_module TEXT NOT NULL,
+  pool_hook TEXT NOT NULL,
+  starting_tick BIGINT NOT NULL,
+  token_metadata JSONB,
+  token_image TEXT,
+  extensions JSONB,
+  network TEXT NOT NULL DEFAULT 'base',
   deployment_tx_hash TEXT NOT NULL,
   deployment_block_number BIGINT NOT NULL,
-  deployment_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  metadata JSONB,
-  status TEXT DEFAULT 'active'
+  deployment_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- User profiles table (if needed)
-CREATE TABLE user_profiles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  wallet_address TEXT UNIQUE NOT NULL,
-  username TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
 
 ### 2.3 Backend Callback Implementation
 
@@ -151,7 +145,7 @@ type TokenStats @entity {
   totalHolders: BigInt!
   lastUpdated: BigInt!
 }
-```
+````
 
 ### 3.4 Subgraph Deployment & Integration
 

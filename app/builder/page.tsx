@@ -26,13 +26,17 @@ import {
 import { useClanker } from "@/hooks/useClanker";
 
 export default function BuilderPage() {
-  const [tokenName, setTokenName] = useState("");
-  const [tokenTicker, setTokenTicker] = useState("");
+  const [tokenName, setTokenName] = useState("BuilderCoin Leal");
+  const [tokenTicker, setTokenTicker] = useState("LEAL");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [tokenAddress, setTokenAddress] = useState<`0x${string}` | null>();
-  const [txHash, setTxHash] = useState<`0x${string}` | null>();
+  const [isSuccess, setIsSuccess] = useState(true);
+  const [tokenAddress, setTokenAddress] = useState<`0x${string}` | undefined>(
+    "0x869A5b968155a2137C1a6Fd277ebAf47384134E1"
+  );
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(
+    "0xcd05776c4ef6874b9fef1438d116533083eab1a021f059d1d1af180c06ba8bdd"
+  );
   const { handleDeploy } = useClanker();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,6 +52,7 @@ export default function BuilderPage() {
         tokenTicker,
         description
       );
+      handleRecordDeployment();
       setIsSuccess(true);
       setTokenAddress(address);
       setTxHash(txHash);
@@ -56,6 +61,29 @@ export default function BuilderPage() {
     }
 
     setIsSubmitting(false);
+  };
+
+  const handleRecordDeployment = async () => {
+    if (!txHash) return;
+
+    try {
+      const response = await fetch("/api/token-deployment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          deployment_tx_hash: txHash,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error(`Error: ${error.error}`);
+      }
+    } catch (error) {
+      console.error("Error recording deployment:", error);
+    }
   };
 
   if (isSuccess) {
