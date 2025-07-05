@@ -22,6 +22,26 @@ const client = createPublicClient({
 const DEPLOYMENT_EVENT_TOPIC =
   "0x9299d1d1a88d8e1abdc591ae7a167a6bc63a8f17d695804e9091ee33aa89fb67";
 
+// TypeScript interface for TokenCreated event arguments
+interface TokenCreatedEventArgs {
+  msgSender: `0x${string}`;
+  tokenAddress: `0x${string}`;
+  tokenAdmin: `0x${string}`;
+  tokenImage: string;
+  tokenName: string;
+  tokenSymbol: string;
+  tokenMetadata: string;
+  tokenContext: string;
+  startingTick: bigint;
+  poolHook: `0x${string}`;
+  poolId: `0x${string}`;
+  pairedToken: `0x${string}`;
+  locker: `0x${string}`;
+  mevModule: `0x${string}`;
+  extensionsSupply: bigint;
+  extensions: readonly `0x${string}`[];
+}
+
 async function extractDeploymentData(txHash: string) {
   try {
     // Get transaction receipt using client method
@@ -31,7 +51,7 @@ async function extractDeploymentData(txHash: string) {
 
     // Find the deployment event log
     const deploymentLog = receipt.logs.find(
-      (log: any) => log.topics[0] === DEPLOYMENT_EVENT_TOPIC
+      (log) => log.topics[0] === DEPLOYMENT_EVENT_TOPIC
     );
 
     if (!deploymentLog) {
@@ -46,7 +66,10 @@ async function extractDeploymentData(txHash: string) {
     });
 
     // Extract data from the decoded log args
-    const args = decodedLog.args as any;
+    if (!decodedLog.args) {
+      throw new Error("No args found in decoded log");
+    }
+    const args = decodedLog.args as unknown as TokenCreatedEventArgs;
 
     return {
       tokenAddress: args.tokenAddress.toLowerCase(),
@@ -80,7 +103,7 @@ export async function POST(req: NextRequest) {
   const privy = new PrivyClient(PRIVY_APP_ID, PRIVY_APP_SECRET);
   try {
     await privy.verifyAuthToken(cookieAuthToken);
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Invalid auth token" }, { status: 401 });
   }
 
@@ -147,7 +170,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to extract deployment data from transaction" },
       { status: 400 }
