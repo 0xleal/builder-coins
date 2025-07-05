@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      env:
-        AGENTVERSE_API_KEY: ${{ secrets.AGENTVERSE_API_KEY }}
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -31,6 +29,8 @@ jobs:
           mv avctl /usr/local/bin/avctl
 
       - name: Authenticate with Agentverse
+        env:
+          AGENTVERSE_API_KEY: ${{ secrets.AGENTVERSE_API_KEY }}
         run: avctl auth token $AGENTVERSE_API_KEY
 
       - name: Deploy all agents
