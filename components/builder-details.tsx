@@ -101,7 +101,7 @@ export default function BuilderDetails({
       texts: [
         {
           key: "BuilderCoin",
-          value: `https://builder-coins.vercel.app/builder/${builder.tokenAddress}`,
+          value: `https://builder-coins.vercel.app/builder/${builder.tokenAddress.toLowerCase()}`,
         },
       ],
       resolverAddress: "0x231b0Ee14048e9dCcD1d247744d114a4EB5E8E63",
