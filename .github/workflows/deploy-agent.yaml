@@ -29,7 +29,11 @@ jobs:
           mv avctl /usr/local/bin/avctl
 
       - name: Authenticate with Agentverse
-        run: avctl auth token ${{ secrets.AGENTVERSE_API_KEY }}
+        run: avctl auth token --token ${{ secrets.AGENTVERSE_API_KEY }}
+        # Alternative flags to try if the above doesn't work:
+        # run: avctl auth token --api-key ${{ secrets.AGENTVERSE_API_KEY }}
+        # run: avctl auth token -t ${{ secrets.AGENTVERSE_API_KEY }}
+        # run: avctl auth token --key ${{ secrets.AGENTVERSE_API_KEY }}
 
       - name: Deploy all agents
         run: ./scripts/deploy-agent.sh
