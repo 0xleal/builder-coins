@@ -2,7 +2,7 @@
 
 import { useLogin, usePrivy } from "@privy-io/react-auth";
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
 import { Button } from "./ui/button";
 
 export default function Login() {
@@ -10,6 +10,7 @@ export default function Login() {
   const { login } = useLogin({});
   const { logout } = usePrivy();
   const { address } = useAccount();
+  const { disconnectAsync } = useDisconnect();
 
   const handleLogin = async () => {
     setIsLoading(true);
@@ -19,6 +20,7 @@ export default function Login() {
 
   const handleLogout = async () => {
     setIsLoading(true);
+    await disconnectAsync();
     await logout();
     setIsLoading(false);
   };
