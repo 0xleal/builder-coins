@@ -27,6 +27,10 @@ import { mainnet } from "wagmi/chains";
 import Image from "next/image";
 import { TALENT_TOKEN } from "@/lib/constants";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useWallets } from "@privy-io/react-auth";
+import { createWalletClient, custom } from "viem";
+import { addEnsContracts } from "@ensdomains/ensjs";
+import { setRecords } from "@ensdomains/ensjs/wallet";
 
 export default function BuilderDetails({
   builder,
@@ -59,8 +63,12 @@ export default function BuilderDetails({
     key: "com.twitter",
     chainId: mainnet.id,
   });
+  const { wallets } = useWallets();
+  const wallet = wallets.find(
+    (w) => w.address.toLowerCase() === builder?.deployerAddress?.toLowerCase()
+  );
 
-  if (!builder) {
+  if (!builder || !wallet) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
@@ -76,6 +84,36 @@ export default function BuilderDetails({
       </div>
     );
   }
+
+  const setTokenOnEnsRecord = async () => {
+    if (!wallet) return;
+
+    await wallet.switchChain(mainnet.id);
+    const provider = await wallet.getEthereumProvider();
+
+    const walletClient = createWalletClient({
+      chain: addEnsContracts(mainnet),
+      transport: custom(provider),
+    });
+
+    console.log(wallet.address);
+    console.log(builder.tokenAddress);
+    console.log(wallet.chainId);
+    const hash = await setRecords(walletClient, {
+      name: ensName as string,
+      account: wallet.address as `0x${string}`,
+      texts: [
+        {
+          key: "BuilderCoin",
+          value: `https://basescan.org/token/${builder.tokenAddress}`,
+        },
+      ],
+      resolverAddress: "0x231b0Ee14048e9dCcD1d247744d114a4EB5E8E63",
+    });
+    console.log(hash);
+
+    return hash;
+  };
 
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
@@ -467,6 +505,14 @@ export default function BuilderDetails({
                     {(builder.totalSupply / 1000000).toFixed(1)}M
                   </span>
                 </div>
+                {wallet && (
+                  <Button
+                    onClick={setTokenOnEnsRecord}
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                  >
+                    Set Token on ENS Record
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>

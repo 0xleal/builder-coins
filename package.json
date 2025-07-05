@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ensdomains/ensjs": "^4.0.2",
     "@privy-io/react-auth": "^2.17.3",
     "@privy-io/server-auth": "^1.28.2",
     "@privy-io/wagmi": "^1.0.5",
