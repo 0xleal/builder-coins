@@ -462,31 +462,6 @@ def test_actual_talent_transfer():
     agent = BuilderTokensIndexFundAgent()
     
     try:
-        # Create fund to get allocations
-        print("Creating fund to get top allocation...")
-        fund_request = FundRequest(
-            target_count=10,
-            min_builder_score=0,
-            max_allocation=25.0,
-            min_allocation=5.0
-        )
-        
-        fund_response = agent.create_index_fund(fund_request)
-        
-        if not fund_response.allocations:
-            print("✗ No allocations found")
-            return
-        
-        # Get the top allocation (highest percentage)
-        top_allocation = max(fund_response.allocations, key=lambda x: x['allocation_percentage'])
-        
-        print(f"🏆 Top allocation identified:")
-        print(f"  Builder: {top_allocation['builder_name']}")
-        print(f"  Token: {top_allocation['token_symbol']}")
-        print(f"  Address: {top_allocation['token_address']}")
-        print(f"  Allocation: {top_allocation['allocation_percentage']}%")
-        print(f"  Builder Score: {top_allocation['builder_score']}")
-        
         # Check current TALENT balance
         from uniswap_universal_router import ERC20_ABI
         talent_contract = agent.web3.eth.contract(
@@ -508,13 +483,13 @@ def test_actual_talent_transfer():
             
             # Prepare swap parameters
             from_token = agent.talent_token_address  # TALENT token
-            to_token = top_allocation['token_address']  # Target builder token
+            to_token = "0x869A5b968155a2137C1a6Fd277ebAf47384134E1"  # Target builder token
             fee = 10000  # 0.3% fee tier (standard)
             slippage = 5.0  # 5% slippage tolerance
             
             print(f"\n🔄 Preparing swap transaction...")
             print(f"  From: TALENT ({from_token})")
-            print(f"  To: {top_allocation['token_symbol']} ({to_token})")
+            print(f"  To: {to_token} ({to_token})")
             print(f"  Amount: {transfer_amount} TALENT ({transfer_amount_wei} wei)")
             print(f"  Fee: {fee / 10000}%")
             print(f"  Slippage: {slippage}%")
@@ -522,14 +497,14 @@ def test_actual_talent_transfer():
             # Show confirmation prompt
             print(f"\n⚠️  LIVE TRANSACTION WARNING ⚠️")
             print(f"This will execute a REAL transaction on the blockchain!")
-            print(f"Swapping {transfer_amount} TALENT for {top_allocation['token_symbol']}")
+            print(f"Swapping {transfer_amount} TALENT for {to_token}")
             
             # For safety, let's do a dry run first
             dry_run = False  # Change to False for actual execution
             
             if dry_run:
                 print(f"\n🔍 DRY RUN MODE - No actual transaction will be sent")
-                print(f"✓ Transaction would swap {transfer_amount} TALENT for {top_allocation['token_symbol']}")
+                print(f"✓ Transaction would swap {transfer_amount} TALENT for {to_token}")
                 print(f"✓ Transaction parameters validated")
                 print(f"✓ Balance check passed")
                 print(f"✓ Ready for live execution (set dry_run=False)")
@@ -568,10 +543,10 @@ def test_actual_talent_transfer():
                         target_decimals = target_contract.functions.decimals().call()
                         target_balance_formatted = target_balance / (10 ** target_decimals)
                         
-                        print(f"  {top_allocation['token_symbol']} balance: {target_balance_formatted} {top_allocation['token_symbol']}")
+                        print(f"  {to_token} balance: {target_balance_formatted} {to_token}")
                         
                     except Exception as e:
-                        print(f"  Could not check {top_allocation['token_symbol']} balance: {e}")
+                        print(f"  Could not check {to_token} balance: {e}")
                         
                 except Exception as e:
                     print(f"✗ Transaction failed: {e}")

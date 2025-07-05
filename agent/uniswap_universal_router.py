@@ -106,34 +106,66 @@ class Uniswap:
             max_approval
         )
         
-        gas_params = self.calculate_gas_parameters(estimated_gas_limit=500000)
-        if not gas_params or not gas_params['has_sufficient_balance']:
-            return False
-
-        tx_params = contract_function.build_transaction({
-            "from": self.account.address,
-            "gas": gas_params['estimated_total_wei'],
-            "maxPriorityFeePerGas": gas_params['max_priority_fee_per_gas'],
-            "maxFeePerGas": gas_params['max_fee_per_gas'],
-            "type": 2,
-            "chainId": self.w3.eth.chain_id,
-            "value": 0,
-            "nonce": self.w3.eth.get_transaction_count(self.account.address),
-        })
-        
-        signed_tx = self.w3.eth.account.sign_transaction(tx_params, self.account.key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
-        print(f"Permit2 token approve transaction hash: {tx_hash.hex()}")
-        
+        # Simple gas calculation for approval transaction
         try:
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
-            if receipt.status == 1:
-                print("Approval transaction confirmed")
-                time.sleep(2)  # Wait for state update
-                return True
+            # Get current gas values
+            base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
+            priority_fee = self.w3.eth.max_priority_fee
+            
+            # Apply reasonable multipliers for approval transaction
+            max_fee_per_gas = int(base_fee * 1.2 + priority_fee * 1.1)
+            max_priority_fee_per_gas = int(priority_fee * 1.1)
+            
+            # Set minimum values
+            min_max_fee = Web3.to_wei(0.003, 'gwei')
+            min_priority_fee = Web3.to_wei(0.001, 'gwei')
+            
+            max_fee_per_gas = max(max_fee_per_gas, min_max_fee)
+            max_priority_fee_per_gas = max(max_priority_fee_per_gas, min_priority_fee)
+            
+            # Ensure max fee is higher than priority fee
+            if max_fee_per_gas < max_priority_fee_per_gas:
+                max_fee_per_gas = max_priority_fee_per_gas * 2
+                
+            # Check balance
+            balance = self.w3.eth.get_balance(self.account.address)
+            estimated_gas = 60000  # Typical gas limit for ERC20 approval
+            estimated_cost = estimated_gas * max_fee_per_gas
+            
+            if balance < estimated_cost:
+                print(f"ERROR: Insufficient ETH balance for approval!")
+                print(f"Current balance: {Web3.from_wei(balance, 'ether')} ETH")
+                print(f"Estimated cost: {Web3.from_wei(estimated_cost, 'ether')} ETH")
+                return False
+
+            tx_params = contract_function.build_transaction({
+                "from": self.account.address,
+                "gas": estimated_gas,
+                "maxPriorityFeePerGas": max_priority_fee_per_gas,
+                "maxFeePerGas": max_fee_per_gas,
+                "type": 2,
+                "chainId": self.w3.eth.chain_id,
+                "value": 0,
+                "nonce": self.w3.eth.get_transaction_count(self.account.address),
+            })
+            
+            signed_tx = self.w3.eth.account.sign_transaction(tx_params, self.account.key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            print(f"Permit2 token approve transaction hash: {tx_hash.hex()}")
+            
+            try:
+                receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+                if receipt.status == 1:
+                    print("Approval transaction confirmed")
+                    time.sleep(2)  # Wait for state update
+                    return True
+            except Exception as e:
+                print(f"Error waiting for approval: {str(e)}")
+            return False
+            
         except Exception as e:
-            print(f"Error waiting for approval: {str(e)}")
-        return False
+            print(f"Error in approve_permit2: {str(e)}")
+            return False
 
     def create_permit_signature(self, token_address):
         """
@@ -253,32 +285,43 @@ class Uniswap:
         # Initialize codec
         codec = RouterCodec(w3=self.w3)
 
-        #add slippage and correct min_amount_out with calculation using uniswap quoters
+        # Add slippage and correct min_amount_out with calculation using uniswap quoters
         min_amount_out = 0
 
         # Get deadline (current block timestamp + 300 seconds)
         deadline = self.w3.eth.get_block("latest")["timestamp"] + 300
         
         if pool_version.lower() == "v3":
-            # Encode V3 swap
-            encoded_data = (
-                codec.encode.chain()
-                .permit2_permit(permit_data,
-                signed_message)
-                .v3_swap_exact_in(
-                FunctionRecipient.SENDER,
-                amount_in_wei,
-                min_amount_out,
-                [
-                    from_token,
-                    fee,
-                    to_token,
-                ],
-                ).build(deadline)
-            )
-            print(f"amount_in_wei: {amount_in_wei}")
+            # Encode V3 swap using recommended approach
+            try:
+                trx_params = (
+                    codec.encode.chain()
+                    .permit2_permit(permit_data, signed_message)
+                    .v3_swap_exact_in(
+                        FunctionRecipient.SENDER,
+                        amount_in_wei,
+                        min_amount_out,
+                        [
+                            from_token,
+                            fee,
+                            to_token,
+                        ],
+                    )
+                    .build_transaction(
+                        self.account.address,
+                        0,  # value=0 for ERC20 to ERC20 swaps
+                        deadline=deadline,
+                        ur_address=self.router_address
+                    )
+                )
+                print(f"V3 swap transaction built successfully")
+                
+            except Exception as e:
+                print(f"Error building V3 transaction: {str(e)}")
+                return None
+            
         elif pool_version.lower() == "v4":
-            # Encode V4 swap
+            # Encode V4 swap using recommended approach
             tick_spacing = 200  # Default tick spacing, adjust if needed
             
             pool_key = codec.encode.v4_pool_key(
@@ -288,69 +331,92 @@ class Uniswap:
                 tick_spacing,
             )
             
-            # Determine if input is native token (ETH/MATIC)
-            is_native_input = from_token.lower() == "0x0000000000000000000000000000000000000000"
+            # Determine swap direction based on token ordering
+            zero_for_one = int(from_token, 16) < int(to_token, 16)
 
-            print(self.account.address)
-            print(self.router_address)
-            print(is_native_input)
-            print(amount_in_wei)
-            print(min_amount_out)
-            print(pool_key)
-            print(from_token)
-            print(to_token)
-            print(fee)
+            print(f"Pool key: {pool_key}")
+            print(f"Zero for one: {zero_for_one}")
+            print(f"Amount in: {amount_in_wei}")
+            print(f"Min amount out: {min_amount_out}")
 
-            print("🧡🧡🧡", codec.encode.chain().v4_swap())
-            print("🧡🧡🧡🧡", codec.encode.chain().v4_swap().swap_exact_in_single(pool_key=pool_key, zero_for_one=True, amount_in=amount_in_wei, amount_out_min=min_amount_out))
-            print("🧡🧡🧡🧡🧡", codec.encode.chain().v4_swap().swap_exact_in_single(pool_key=pool_key, zero_for_one=True, amount_in=amount_in_wei, amount_out_min=min_amount_out).take_all(to_token, 0))
-            print("🧡🧡🧡🧡🧡🧡", codec.encode.chain().v4_swap().swap_exact_in_single(pool_key=pool_key, zero_for_one=True, amount_in=amount_in_wei, amount_out_min=min_amount_out).take_all(to_token, 0).settle_all(from_token, amount_in_wei))
-            print("🧡🧡🧡🧡🧡🧡🧡", codec.encode.chain().v4_swap().swap_exact_in_single(pool_key=pool_key, zero_for_one=True, amount_in=amount_in_wei, amount_out_min=min_amount_out).take_all(to_token, 0).settle_all(from_token, amount_in_wei).build_v4_swap())
-            print("🧡🧡🧡🧡🧡🧡🧡🧡", codec.encode.chain().v4_swap().swap_exact_in_single(pool_key=pool_key, zero_for_one=True, amount_in=amount_in_wei, amount_out_min=min_amount_out).take_all(to_token, 0).settle_all(from_token, amount_in_wei).build_v4_swap().build_transaction(self.account.address, amount_in_wei if is_native_input else 0, ur_address=self.router_address))
-            
-            encoded_data = (
-                codec.encode.chain()
-                .v4_swap()
-                .swap_exact_in_single(
-                    pool_key=pool_key,
-                    zero_for_one=True,
-                    amount_in=amount_in_wei,
-                    amount_out_min=min_amount_out,
+            try:
+                trx_params = (
+                    codec.encode.chain()
+                    .permit2_permit(permit_data, signed_message)
+                    .v4_swap()
+                    .swap_exact_in_single(
+                        pool_key=pool_key,
+                        zero_for_one=zero_for_one,
+                        amount_in=amount_in_wei,
+                        amount_out_min=min_amount_out,
+                    )
+                    .take_all(to_token, 0)
+                    .settle_all(from_token, amount_in_wei)
+                    .build_v4_swap()
+                    .build_transaction(
+                        self.account.address,
+                        0,  # value=0 for ERC20 to ERC20 swaps
+                        deadline=deadline,
+                        ur_address=self.router_address
+                    )
                 )
-                .take_all(to_token, 0)
-                .settle_all(from_token, amount_in_wei)
-                .build_v4_swap()
-                .build_transaction(self.account.address, amount_in_wei if is_native_input else 0, ur_address=self.router_address)
-            )
+                print(f"V4 swap transaction built successfully")
+                
+            except Exception as e:
+                print(f"Error building V4 transaction: {str(e)}")
+                # Add more detailed debugging
+                print(f"Error type: {type(e)}")
+                if hasattr(e, 'args'):
+                    print(f"Error args: {e.args}")
+                
+                # Try to get more information about the pool
+                print(f"Debugging info:")
+                print(f"  From token: {from_token}")
+                print(f"  To token: {to_token}")
+                print(f"  Pool key: {pool_key}")
+                print(f"  Fee: {fee}")
+                print(f"  Tick spacing: {tick_spacing}")
+                print(f"  Zero for one: {zero_for_one}")
+                print(f"  Amount in: {amount_in_wei}")
+                print(f"  Router address: {self.router_address}")
+                
+                # Check if the pool exists by trying to get pool info
+                try:
+                    # You might need to add pool existence check here
+                    print("Checking if pool exists...")
+                    pool_id = codec.encode.v4_pool_id(pool_key)
+                    print(f"Pool id: {pool_id}")
+                except Exception as pool_check_error:
+                    print(f"Pool check error: {pool_check_error}")
+                
+                return None
         
         else:
             raise ValueError("Unsupported pool_version. Use 'v3' or 'v4'.")
         
-        #calculate gas parameters with estimated gas limit for a permit
-        gas_params = self.calculate_gas_parameters(estimated_gas_limit=500000)  # Higher gas limit for swaps
+        # Check if we have sufficient ETH balance for gas
+        balance = self.w3.eth.get_balance(self.account.address)
+        estimated_gas_cost = trx_params['gas'] * trx_params['maxFeePerGas']
         
-        if not gas_params or not gas_params['has_sufficient_balance']:
+        if balance < estimated_gas_cost:
+            needed_eth = Web3.from_wei(estimated_gas_cost - balance, "ether")
+            print(f"ERROR: Insufficient ETH balance for gas!")
+            print(f"Current balance: {Web3.from_wei(balance, 'ether')} ETH")
+            print(f"Estimated gas cost: {Web3.from_wei(estimated_gas_cost, 'ether')} ETH")
+            print(f"Need {needed_eth} more ETH")
             return None
-        # Build transaction
-        tx = {
-            "from": self.account.address,
-            "to": self.router_address,
-            "data": encoded_data,
-            "value": amount_in_wei if from_token.lower() == "0x0000000000000000000000000000000000000000" else 0,
-            "nonce": self.w3.eth.get_transaction_count(self.account.address),
-            "gas": gas_params['estimated_total_wei'],  # Use estimated gas from gas_params
-            "maxFeePerGas": gas_params['max_fee_per_gas'],
-            "maxPriorityFeePerGas": gas_params['max_priority_fee_per_gas'],
-            "type": 2,  # EIP-1559 transaction type
-            "chainId": self.w3.eth.chain_id
-        }
         
-        # Sign and send transaction
-        signed_tx = self.w3.eth.account.sign_transaction(tx, self.account.key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
-        
-        return tx_hash
-  
+        # Sign and send transaction using the built transaction parameters
+        try:
+            signed_tx = self.w3.eth.account.sign_transaction(trx_params, self.account.key)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            print(f"Transaction sent: {tx_hash.hex()}")
+            return tx_hash
+            
+        except Exception as e:
+            print(f"Error sending transaction: {str(e)}")
+            return None
+
     def cancel_transaction(self, stuck_nonce):
         """
         Cancel stuck transaction by sending 0 ETH to self
@@ -438,74 +504,4 @@ class Uniswap:
             print(f"Error checking for stuck transactions: {e}")
             return None
 
-    def calculate_gas_parameters(self, estimated_gas_limit=21000):
-        """
-        Calculate optimal gas parameters and check balance sufficiency.
-        
-        Args:
-            estimated_gas_limit (int): Estimated gas limit for the transaction
-        
-        Returns:
-            dict: Gas parameters and status, or None if insufficient balance
-            {
-                'max_fee_per_gas': int,
-                'max_priority_fee_per_gas': int,
-                'estimated_total_wei': int,
-                'has_sufficient_balance': bool
-            }
-        """
-        try:
-            # Get current gas values 
-            base_fee = self.w3.eth.get_block("latest")["baseFeePerGas"]
-            priority_fee = self.w3.eth.max_priority_fee
 
-            # More efficient multipliers for Base network
-            base_multiplier = 1.2   # Reduced from 2
-            priority_multiplier = 1.1  # Reduced from 2
-
-            # Calculate new gas prices (in wei) and convert to integers
-            new_max_fee_per_gas = int(base_fee * base_multiplier + priority_fee * priority_multiplier)
-            new_max_priority_fee = int(priority_fee * priority_multiplier)
-
-            # Set minimum values for Base (in wei)
-            min_max_fee = Web3.to_wei(0.003, 'gwei')  # 0.003 gwei minimum
-            min_priority_fee = Web3.to_wei(0.001, 'gwei')  # 0.001 gwei minimum
-
-            # Use maximum between calculated and minimum values
-            new_max_fee_per_gas = max(new_max_fee_per_gas, min_max_fee)
-            new_max_priority_fee = max(new_max_priority_fee, min_priority_fee)
-
-            # Ensure max fee is higher than priority fee
-            if new_max_fee_per_gas < new_max_priority_fee:
-                new_max_fee_per_gas = new_max_priority_fee * 2
-
-            # Calculate total gas cost
-            total_gas_wei = int(estimated_gas_limit * new_max_fee_per_gas)
-            total_gas_eth = Web3.from_wei(total_gas_wei, "ether")
-
-            # Get current balance
-            balance = self.w3.eth.get_balance(self.account.address)
-
-            # Print gas details
-            print(f"\n🟢 Gas Parameters:")
-            print(f"🔹 Max Fee per Gas: {Web3.from_wei(new_max_fee_per_gas, 'gwei')} Gwei")
-            print(f"🔹 Max Priority Fee per Gas: {Web3.from_wei(new_max_priority_fee, 'gwei')} Gwei")
-            print(f"🔹 Estimated Total Gas Cost: {total_gas_eth} ETH")
-            print(f"🔹 Current Balance: {Web3.from_wei(balance, 'ether')} ETH")
-
-            has_sufficient_balance = balance >= total_gas_wei
-            if not has_sufficient_balance:
-                needed_eth = Web3.from_wei(total_gas_wei - balance, "ether")
-                print(f"⚠️ ERROR: Insufficient balance!")
-                print(f"⚠️ Need {needed_eth} more ETH")
-
-            return {
-                'max_fee_per_gas': int(new_max_fee_per_gas),  # Ensure integer
-                'max_priority_fee_per_gas': int(new_max_priority_fee),  # Ensure integer
-                'estimated_total_wei': int(estimated_gas_limit),  # Ensure integer
-                'has_sufficient_balance': has_sufficient_balance
-            }
-
-        except Exception as e:
-            print(f"Error calculating gas parameters: {str(e)}")
-            return None

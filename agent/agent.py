@@ -22,6 +22,8 @@ from uniswap_universal_router import ERC20_ABI
 
 load_dotenv()
 
+web3 = Web3(Web3.HTTPProvider(os.environ.get('WEB3_PROVIDER_URL')))
+
 @dataclass
 class TalentProfile:
     """Represents a Talent Protocol profile with Builder Score"""
@@ -65,6 +67,7 @@ class BuilderTokensIndexFundAgent:
     
     def __init__(self):
         self.api_base_url = "https://builder-coins.vercel.app/api"
+        self.api_key = os.environ.get('API_KEY')
         self.talent_api_base_url = "https://api.talentprotocol.com/"
         self.talent_api_key = os.environ.get('TALENT_API_KEY')
         self.talent_profiles = []
@@ -73,7 +76,7 @@ class BuilderTokensIndexFundAgent:
         self.wallet_address = os.environ.get('WALLET_ADDRESS')
         self.private_key = os.environ.get('PRIVATE_KEY')
         self.provider = os.environ.get('WEB3_PROVIDER_URL')
-        self.web3 = Web3(Web3.HTTPProvider(self.provider))
+        self.web3 = web3
         self.uniswap = Uniswap(
             wallet_address=self.wallet_address,
             private_key=self.private_key,
@@ -306,7 +309,10 @@ class BuilderTokensIndexFundAgent:
         self.fund_allocations = allocations
 
         # Execute fund purchases
-        self.execute_fund_purchases(allocations)
+        # TODO: Use Uniswap V4 to purchase tokens
+        # self.execute_fund_purchases(allocations)
+
+        self.execute_save_strategy_to_api(allocations)
         
         return FundResponse(
             fund_id=fund_id,
@@ -356,6 +362,26 @@ class BuilderTokensIndexFundAgent:
                 print(f"Swap transaction sent! Tx hash: {tx_hash.hex()}")
             except Exception as e:
                 print(f"Swap failed: {e}")
+
+    def execute_save_strategy_to_api(self, allocations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Save the strategy to the API"""
+        try:
+            url = f"{self.api_base_url}/fund-manager-allocation"
+            headers = {"Content-Type": "application/json", "x-api-key": self.api_key}
+            data = [
+                {
+                    "token_address": allocation["token_address"],
+                    "allocation_percentage": allocation["allocation_percentage"],
+                    "builder_score": allocation["builder_score"]
+                } for allocation in allocations
+            ]
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+
+            print(f"Strategy saved to API: {response.json()}")
+        except Exception as e:
+            print(f"Error saving strategy to API: {e}")
+
 
 # Create the uAgent
 agent = Agent(

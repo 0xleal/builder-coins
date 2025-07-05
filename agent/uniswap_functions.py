@@ -48,12 +48,6 @@ _speed_multiplier = {
     TransactionSpeed.FASTER: 1.5,
 }
 
-class TransactionSpeed(Enum):
-    SLOW = 0
-    AVERAGE = 1
-    FAST = 2
-    FASTER = 3
-
 def compute_gas_fees(
         w3: Web3,
         trx_speed: TransactionSpeed = TransactionSpeed.FAST,
@@ -71,23 +65,39 @@ def compute_gas_fees(
     :param block_identifier: the block number or identifier, default to 'latest'
     :return: the tuple (priority_fee, max_fee_per_gas)
     """
+    print("🩵", trx_speed, trx_speed.value)
+
     block = w3.eth.get_block(block_identifier, True)
+    print("🩵🩵", "block", block)
     transactions = cast(Sequence[TxData], block["transactions"])
+    print("🩵🩵🩵", "transactions", transactions)
     tips = [
         int(trx.get("maxPriorityFeePerGas", 0))
         for trx
         in transactions
         if trx.get("maxPriorityFeePerGas", 0) > 0
     ]
+    print("🩵🩵🩵🩵", "tips", tips)
     if len(tips) < 3:
         priority_fee = 1
+        print("🩵🩵🩵🩵", "priority_fee", priority_fee)
     else:
         quintiles = quantiles(tips, n=5, method="inclusive")
+        print("🩵🩵🩵🩵", "quintiles", quintiles)
+        print("🩵🩵🩵🩵", "trx_speed", trx_speed)
+        print("🩵🩵🩵🩵", "_speed_multiplier", _speed_multiplier)
+        print("🩵🩵🩵🩵", "trx_speed.value", trx_speed.value)
+        print("🩵🩵🩵🩵", "quintiles[trx_speed.value]", quintiles[trx_speed.value])
+        print("🩵🩵🩵🩵", "_speed_multiplier[trx_speed]", _speed_multiplier[trx_speed])
+        print("🩵🩵🩵🩵", "quintiles[trx_speed.value] * _speed_multiplier[trx_speed]", quintiles[trx_speed.value] * _speed_multiplier[trx_speed])
+        print("🩵🩵🩵🩵", "int(quintiles[trx_speed.value] * _speed_multiplier[trx_speed])", int(quintiles[trx_speed.value] * _speed_multiplier[trx_speed]))
         priority_fee = int(quintiles[trx_speed.value] * _speed_multiplier[trx_speed])
-
+        print("🩵🩵🩵🩵", "priority_fee", priority_fee)
+    print("🩵🩵🩵🩵🩵", "priority_fee", priority_fee)
     base_fee = block["baseFeePerGas"]
+    print("🩵🩵🩵🩵🩵🩵", "base_fee", base_fee)
     max_fee_per_gas = int(base_fee * 1.5 + priority_fee)
-
+    print("🩵🩵🩵🩵🩵🩵🩵", "max_fee_per_gas", max_fee_per_gas)
     return Wei(priority_fee), Wei(max_fee_per_gas)
 
 def compute_sqrt_price_x96(amount_0: Wei, amount_1: Wei) -> int:
@@ -915,20 +925,34 @@ class _ChainedFunctionBuilder:
             chain_id = self._w3.eth.chain_id
 
         if nonce is None:
+            print("💚", "no nonce")
             nonce = self._w3.eth.get_transaction_count(sender, block_identifier)
+            print("💚", "nonce", nonce)
 
         if not trx_speed:
+            print("💚", "no trx_speed")
             if priority_fee is None or max_fee_per_gas is None:
+                print("💚", "no priority_fee or max_fee_per_gas")
                 raise ValueError("Either trx_speed or both priority_fee and max_fee_per_gas must be set.")
             else:
+                print("💚", "priority_fee or max_fee_per_gas")
+                print("💚", "priority_fee", priority_fee)
+                print("💚", "max_fee_per_gas", max_fee_per_gas)
                 _priority_fee = priority_fee
                 _max_fee_per_gas = max_fee_per_gas
         else:
+            print("💚💚", "trx_speed")
             if priority_fee or max_fee_per_gas:
+                print("💚💚", "priority_fee or max_fee_per_gas")
                 raise ValueError("priority_fee and max_fee_per_gas can't be set with trx_speed")
             else:
+                print("💚💚💚", "compute_gas_fees")
+                print("💚💚💚", "trx_speed", trx_speed)
+                print("💚💚💚", "block_identifier", block_identifier)
                 _priority_fee, _max_fee_per_gas = compute_gas_fees(self._w3, trx_speed, block_identifier)
+                print("💚💚💚", "compute_gas_fees", _priority_fee, _max_fee_per_gas)
                 if _max_fee_per_gas > max_fee_per_gas_limit:
+                    print("💚💚💚", "max_fee_per_gas > max_fee_per_gas_limit")
                     raise ValueError(
                         "Computed max_fee_per_gas is greater than max_fee_per_gas_limit. "
                         "Either provide max_fee_per_gas, increase max_fee_per_gas_limit "
@@ -947,11 +971,18 @@ class _ChainedFunctionBuilder:
             "data": encoded_data,
         }
 
+        print("💚", "tx_params", tx_params)
+
         if gas_limit is None:
+            print("💚", "gas_limit is None")
             estimated_gas = self._w3.eth.estimate_gas(tx_params, block_identifier)
-            gas_limit = int(estimated_gas * 1.15)
+            gas_limit = estimated_gas * 1.15
+            print("💚", "estimated_gas", estimated_gas)
+
+        print("💚", "gas_limit", gas_limit)
 
         tx_params["gas"] = Wei(gas_limit)
+        print("💚", "tx_params", tx_params)
 
         return tx_params
 
