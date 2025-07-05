@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ArrowLeft,
   ArrowUpDown,
   Copy,
   CheckCircle,
@@ -30,7 +29,7 @@ import {
   Settings,
   Info,
 } from "lucide-react";
-import { Builder } from "@/app/builder/[id]/page";
+import { Builder } from "@/lib/types";
 
 // Available tokens for swapping
 const availableTokens = [
@@ -154,36 +153,7 @@ export default function BuilderDetails({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Navigation */}
-      <nav className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/fund"
-                className="flex items-center space-x-2 text-white/80 hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back to Fund</span>
-              </Link>
-              <div className="flex items-center space-x-2">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
-                <span className="text-xl font-bold text-white">
-                  BuildersFund
-                </span>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-            >
-              Connect Wallet
-            </Button>
-          </div>
-        </div>
-      </nav>
-
+    <>
       {/* Cover Image */}
       <div className="h-48 bg-gradient-to-r from-purple-600/30 to-pink-600/30 relative">
         <div className="absolute inset-0 bg-black/20" />
@@ -407,7 +377,7 @@ export default function BuilderDetails({
             </Card>
 
             {/* Token Metrics */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
+            <Card className="bg-white/5 border-white/10 backdrop-blur-sm mb-8">
               <CardHeader>
                 <CardTitle className="text-white">Token Metrics</CardTitle>
               </CardHeader>
@@ -417,16 +387,6 @@ export default function BuilderDetails({
                     <p className="text-white/60 text-sm">Current Price</p>
                     <p className="text-white text-xl font-bold">
                       ${builder.currentPrice}
-                    </p>
-                    <p
-                      className={`text-sm ${
-                        builder.change24h >= 0
-                          ? "text-green-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      {builder.change24h >= 0 ? "+" : ""}
-                      {builder.change24h}% 24h
                     </p>
                   </div>
                   <div>
@@ -598,48 +558,6 @@ export default function BuilderDetails({
               </CardContent>
             </Card>
 
-            {/* Performance */}
-            <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-white">Performance</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">24h</span>
-                  <span
-                    className={`font-semibold ${
-                      builder.change24h >= 0 ? "text-green-400" : "text-red-400"
-                    }`}
-                  >
-                    {builder.change24h >= 0 ? "+" : ""}
-                    {builder.change24h}%
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">7d</span>
-                  <span
-                    className={`font-semibold ${
-                      builder.change7d >= 0 ? "text-green-400" : "text-red-400"
-                    }`}
-                  >
-                    {builder.change7d >= 0 ? "+" : ""}
-                    {builder.change7d}%
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">30d</span>
-                  <span
-                    className={`font-semibold ${
-                      builder.change30d >= 0 ? "text-green-400" : "text-red-400"
-                    }`}
-                  >
-                    {builder.change30d >= 0 ? "+" : ""}
-                    {builder.change30d}%
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Token Metadata */}
             <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
               <CardHeader>
@@ -673,19 +591,11 @@ export default function BuilderDetails({
                     #{builder.blockNumber.toLocaleString()}
                   </span>
                 </div>
-
-                <Button
-                  variant="outline"
-                  className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent mt-4"
-                >
-                  View on Explorer
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </Button>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
