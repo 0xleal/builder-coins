@@ -419,13 +419,12 @@ export default function SearchPage() {
                               {formatDate(builder.launchDate)}
                             </p>
                           </div>
-                          <Link href={`/builder/${builder.id}`}>
+                          <Link
+                            href={`/builder/${builder.tokenAddress.toLowerCase()}`}
+                          >
                             <Button
                               size="sm"
                               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-                              onClick={() =>
-                                window.open(`/builder/${builder.tokenAddress}`)
-                              }
                             >
                               View Profile
                             </Button>
