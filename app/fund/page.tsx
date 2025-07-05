@@ -28,6 +28,17 @@ import {
   Activity,
   ExternalLink,
 } from "lucide-react";
+import { FUND_MANAGER_ADDRESS, TALENT_TOKEN } from "@/lib/constants";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import {
+  createPublicClient,
+  http,
+  erc20Abi,
+  parseEther,
+  formatUnits,
+} from "viem";
+import { base } from "viem/chains";
 
 // Mock data
 const fundMetrics = {
@@ -97,7 +108,61 @@ const builders = [
 ];
 
 export default function FundPage() {
-  const [buyAmount, setBuyAmount] = useState("");
+  const [depositAmount, setDepositAmount] = useState("");
+  const { ready, authenticated } = usePrivy();
+  const account = useAccount();
+  const wallets = useWallets();
+  const { writeContractAsync } = useWriteContract();
+  const { data: balance } = useReadContract({
+    abi: erc20Abi,
+    chainId: base.id,
+    address: TALENT_TOKEN.address as `0x${string}`,
+    functionName: "balanceOf",
+    args: [account.address as `0x${string}`],
+  });
+
+  const client = createPublicClient({ chain: base, transport: http() });
+
+  const depositLiquidity = async () => {
+    if (!ready || !authenticated || !account) return;
+
+    if (balance && parseEther(depositAmount) > balance) {
+      console.log("Insufficient balance");
+      return;
+    }
+
+    const wallet = wallets.wallets.find(
+      (w) => w.address.toLowerCase() === account.address?.toLowerCase()
+    );
+
+    if (!wallet) {
+      console.log("Wallet not found");
+      return;
+    }
+
+    await wallet.switchChain(base.id);
+
+    console.log(depositAmount);
+    console.log(parseEther(depositAmount));
+
+    const tx = await writeContractAsync({
+      address: TALENT_TOKEN.address as `0x${string}`,
+      abi: erc20Abi,
+      chainId: base.id,
+      functionName: "transfer",
+      args: [FUND_MANAGER_ADDRESS, parseEther(depositAmount)],
+      account: account.address as `0x${string}`,
+    });
+
+    console.log(tx);
+
+    await client.waitForTransactionReceipt({
+      hash: tx,
+    });
+
+    console.log("Successfully deposited liquidity");
+    setDepositAmount("");
+  };
 
   return (
     <>
@@ -185,17 +250,30 @@ export default function FundPage() {
               <CardContent>
                 <div className="space-y-2">
                   <Label htmlFor="buy-amount" className="text-white">
-                    Deposit (ETH)
+                    Deposit
                   </Label>
+                  <p className="text-white/60 text-sm">
+                    $TALENT: {balance ? formatUnits(balance, 18) : "0"}
+                  </p>
                   <Input
                     id="buy-amount"
                     placeholder="0.0"
-                    value={buyAmount}
-                    onChange={(e) => setBuyAmount(e.target.value)}
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
                     className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                   />
                 </div>
-                <Button className="w-full bg-green-600 hover:bg-green-700 text-white mt-3">
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white mt-3"
+                  onClick={depositLiquidity}
+                  disabled={
+                    !ready ||
+                    !authenticated ||
+                    !account ||
+                    !balance ||
+                    !depositAmount
+                  }
+                >
                   Provide Liquidity
                 </Button>
               </CardContent>
