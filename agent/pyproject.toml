@@ -6,8 +6,17 @@ authors = ["None"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "3.11"
-uagents = "^0.17.1"
+python = ">=3.11,<3.13"
+uagents = "^0.22.5"
+web3 = "^6.0.0"
+openai = "^1.0.0"
+uagents-core = "^0.3.4"
+langchain = "^0.1.0"
+langchain-openai = "^0.0.5"
+langchain-community = "^0.0.10"
+pandas = "^2.1.0"
+numpy = "^1.24.0"
+python-dotenv = "^1.0.0"
 
 
 [build-system]
