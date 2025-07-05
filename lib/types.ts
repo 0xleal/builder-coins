@@ -70,3 +70,10 @@ export type FundManagerPortfolio = {
   liquidity_available: number;
   builder_coins_held: number;
 };
+
+export type FundManagerAllocation = {
+  token_address: string;
+  allocation_percentage: number;
+  builder_score: number;
+  deployer_address: string;
+};

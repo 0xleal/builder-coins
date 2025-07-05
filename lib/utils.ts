@@ -74,9 +74,9 @@ export function mapTokenDataToBuilder(
     blockNumber: camelCaseData.deploymentBlockNumber,
     profileImage: camelCaseData.tokenImage ?? undefined,
     profileName: camelCaseData.tokenName, // Using token name as profile name
-    currentPrice: dexscreenerData?.pair.priceUsd ?? 0,
-    marketCap: dexscreenerData?.pair.marketCap ?? 0,
-    volume24h: dexscreenerData?.pair.volume.h24 ?? 0,
-    priceChangePercentage24h: dexscreenerData?.pair.priceChange.h24 ?? 0,
+    currentPrice: dexscreenerData?.pair?.priceUsd ?? 0,
+    marketCap: dexscreenerData?.pair?.marketCap ?? 0,
+    volume24h: dexscreenerData?.pair?.volume.h24 ?? 0,
+    priceChangePercentage24h: dexscreenerData?.pair?.priceChange.h24 ?? 0,
   };
 }

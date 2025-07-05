@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/lib/database-types";
+import { FundManagerAllocation } from "@/lib/types";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
@@ -17,12 +18,6 @@ if (!BACKEND_API_KEY) {
 }
 
 const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY);
-
-type FundManagerAllocation = {
-  token_address: string;
-  allocation_percentage: number;
-  builder_score: number;
-};
 
 export async function POST(req: NextRequest) {
   const headers = req.headers;
