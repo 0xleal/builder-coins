@@ -24,7 +24,7 @@ export async function GET() {
       )
       .reduce(
         (acc: number, balance: { value_usd: number }) =>
-          acc + balance.value_usd,
+          acc + (balance.value_usd || 0),
         0
       )
       .toFixed(2),
@@ -35,7 +35,7 @@ export async function GET() {
       )
       .reduce(
         (acc: number, balance: { value_usd: number }) =>
-          acc + balance.value_usd,
+          acc + (balance.value_usd || 0),
         0
       )
       .toFixed(2),

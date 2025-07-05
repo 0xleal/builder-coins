@@ -20,6 +20,12 @@ export function Navbar() {
               Fund
             </Link>
             <Link
+              href="/search"
+              className="text-white/80 hover:text-white transition-colors"
+            >
+              Search
+            </Link>
+            <Link
               href="/builder"
               className="text-white/80 hover:text-white transition-colors"
             >
