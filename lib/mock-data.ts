@@ -24,6 +24,7 @@ export const MOCK_DATA = {
   circulatingSupply: 75000000,
   holders: 2847,
   volume24h: 45670,
+  priceChangePercentage24h: 10.5,
 
   // Fund status
   fundStatus: {

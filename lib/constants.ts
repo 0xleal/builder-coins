@@ -19,3 +19,6 @@ export const TALENT_TOKEN = new Token(
   "TALENT",
   "TalentProtocolToken"
 );
+
+export const DEXSCREENER_BASE_URL =
+  "https://api.dexscreener.com/latest/dex/pairs/base";

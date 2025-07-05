@@ -179,7 +179,6 @@ export async function POST(req: NextRequest) {
 }
 
 // GET /api/token-deployment, returns all token deployments paginated 100 per page
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const page = Number(searchParams.get("page")) || 1;

@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Builder } from "./types";
+import { Builder, DexscreenerResponse } from "./types";
 import { Database } from "./database-types";
 
 export function cn(...inputs: ClassValue[]) {
@@ -56,7 +56,8 @@ type TokenDeployment = Database["public"]["Tables"]["token_deployments"]["Row"];
 
 // Function to map database response to Builder type
 export function mapTokenDataToBuilder(
-  tokenData: TokenDeployment
+  tokenData: TokenDeployment,
+  dexscreenerData: DexscreenerResponse | null
 ): Partial<Builder> {
   const camelCaseData = convertKeysToCamelCase(tokenData);
 
@@ -73,5 +74,9 @@ export function mapTokenDataToBuilder(
     blockNumber: camelCaseData.deploymentBlockNumber,
     profileImage: camelCaseData.tokenImage ?? undefined,
     profileName: camelCaseData.tokenName, // Using token name as profile name
+    currentPrice: dexscreenerData?.pair.priceUsd ?? 0,
+    marketCap: dexscreenerData?.pair.marketCap ?? 0,
+    volume24h: dexscreenerData?.pair.volume.h24 ?? 0,
+    priceChangePercentage24h: dexscreenerData?.pair.priceChange.h24 ?? 0,
   };
 }

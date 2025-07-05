@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { DEXSCREENER_BASE_URL } from "@/lib/constants";
+import { DexscreenerResponse } from "@/lib/types";
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_KEY!;
-const DEXSCREENER_BASE_URL =
-  "https://api.dexscreener.com/latest/dex/pairs/base";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  const data = await response.json();
+  const data: DexscreenerResponse = await response.json();
 
   const returnData = {
     owner: existing.deployer_address,

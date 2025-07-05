@@ -408,33 +408,10 @@ export default function BuilderDetails({
                     </p>
                   </div>
                   <div>
-                    <p className="text-white/60 text-sm">Holders</p>
+                    <p className="text-white/60 text-sm">Price Change 24h</p>
                     <p className="text-white text-xl font-bold">
-                      {builder.holders.toLocaleString()}
+                      {builder.priceChangePercentage24h.toFixed(2)}%
                     </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-white/60">Circulating Supply</span>
-                      <span className="text-white">
-                        {(builder.circulatingSupply / 1000000).toFixed(1)}M /{" "}
-                        {(builder.totalSupply / 1000000).toFixed(1)}M
-                      </span>
-                    </div>
-                    <div className="w-full bg-white/10 rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full"
-                        style={{
-                          width: `${
-                            (builder.circulatingSupply / builder.totalSupply) *
-                            100
-                          }%`,
-                        }}
-                      ></div>
-                    </div>
                   </div>
                 </div>
               </CardContent>
