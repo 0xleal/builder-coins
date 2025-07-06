@@ -65,6 +65,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Tech
+
+- The graph repo: https://github.com/0xleal/builder-coins-subgraph
+
 ## 🤝 Contributing
 
 This project was built for ETHGlobal Cannes hackathon. Contributions are welcome!
